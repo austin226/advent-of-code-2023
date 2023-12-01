@@ -77,6 +77,8 @@ mod tests {
     #[test]
     fn test_secret_number() {
         for (line, exp_res) in [
+            ("eighthree", 83),
+            ("sevenine", 79),
             ("1abc2two", 12),
             ("pqr3stu8vwx", 38),
             ("a1b2c3d4e5f", 15),
