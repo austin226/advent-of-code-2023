@@ -9,19 +9,14 @@ pub fn run() {
 
     // Create a path to the desired file
     let path = Path::new("src/day1/input.txt");
-    let display = path.display();
 
-    // Open the path in read-only mode, returns `io::Result<File>`
-    let mut file = match File::open(&path) {
-        Err(why) => panic!("couldn't open {}: {}", display, why),
-        Ok(file) => file,
-    };
-
-    // Read the file contents into a string, returns `io::Result<usize>`
-    let mut s = String::new();
-    match file.read_to_string(&mut s) {
-        Err(why) => panic!("couldn't read {}: {}", display, why),
-        Ok(file_str) => {}
+    if let Ok(lines) = read_lines(path) {
+        // Consumes the iterator, returns an (Optional) String
+        for line in lines {
+            if let Ok(ip) = line {
+                println!("{}", ip);
+            }
+        }
     }
 }
 
