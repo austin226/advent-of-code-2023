@@ -1,9 +1,37 @@
 // https://adventofcode.com/2023/day/1
 
 use regex::Regex;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+
+const DIGITS: [(&str, u32); 19] = [
+    ("0", 0),
+    ("1", 1),
+    ("2", 2),
+    ("3", 3),
+    ("4", 4),
+    ("5", 5),
+    ("6", 6),
+    ("7", 7),
+    ("8", 8),
+    ("9", 9),
+    ("one", 1),
+    ("two", 2),
+    ("three", 3),
+    ("four", 4),
+    ("five", 5),
+    ("six", 6),
+    ("seven", 7),
+    ("eight", 8),
+    ("nine", 9),
+];
+
+struct DigitMatch {
+    digit: u32,
+    index: usize,
+}
 
 pub fn run() {
     // Create a path to the desired file
@@ -42,32 +70,23 @@ where
 
 /// Concatenate the first and last digit characters in the string together.
 fn secret_number(line: &String) -> u32 {
-    let re = Regex::new(r"\d|one|two|three|four|five|six|seven|eight|nine").expect("vaild regex");
-    let matches: Vec<_> = re.find_iter(line).map(|m| m.as_str()).collect();
-    let first = parse_word_digit(matches[0]);
-    let last = parse_word_digit(matches[matches.len() - 1]);
-    first * 10 + last
-}
-
-fn parse_word_digit(word: &str) -> u32 {
-    if let Ok(d) = word.parse::<u32>() {
-        // word is already a digit
-        if (1..=9).contains(&d) {
-            return d;
+    // contruct a map of digit matches to positions
+    let mut matches = Vec::new();
+    for (d_str, d_val) in DIGITS {
+        for (index, _) in line.match_indices(d_str) {
+            matches.push(DigitMatch {
+                digit: d_val,
+                index,
+            });
         }
     }
-    match word {
-        "one" => 1,
-        "two" => 2,
-        "three" => 3,
-        "four" => 4,
-        "five" => 5,
-        "six" => 6,
-        "seven" => 7,
-        "eight" => 8,
-        "nine" => 9,
-        _ => panic!("Invalid word digit: {word}"),
-    }
+
+    // Sort matches by index
+    matches.sort_by(|a, b| a.index.cmp(&b.index));
+    let matches = matches;
+    let first = &matches[0];
+    let last = &matches[matches.len() - 1];
+    return first.digit * 10 + last.digit;
 }
 
 #[cfg(test)]
@@ -97,10 +116,5 @@ mod tests {
         ] {
             assert_eq!(exp_res, secret_number(&line.to_string()), "line={line}");
         }
-    }
-
-    #[test]
-    fn parse_word() {
-        assert_eq!(parse_word_digit("one"), 1);
     }
 }
