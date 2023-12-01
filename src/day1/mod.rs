@@ -13,7 +13,8 @@ pub fn run() {
             for line in lines {
                 match line {
                     Ok(line) => {
-                        println!("{}", line);
+                        let line_sum = line_sum(&line);
+                        println!("{} / {}", line_sum, line);
                     }
                     Err(err) => {
                         panic!("Cannot read line in {} - {}", path.display(), err);
@@ -38,7 +39,9 @@ where
 }
 
 /// Add the first and last digit characters in the string together.
-fn line_sum(line: String) -> u32 {
+fn line_sum(line: &String) -> u32 {
     // TODO
+    let regex = r"(?:(\d).*(\d)[^\n$]*(?:\n|$)|(\d).*(?:\n|$))";
+    println!("{}", regex);
     0
 }
