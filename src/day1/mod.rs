@@ -8,12 +8,21 @@ pub fn run() {
     // Create a path to the desired file
     let path = Path::new("src/day1/input.txt");
 
-    if let Ok(lines) = read_lines(path) {
-        // Consumes the iterator, returns an (Optional) String
-        for line in lines {
-            if let Ok(line) = line {
-                println!("{}", line);
+    match read_lines(path) {
+        Ok(lines) => {
+            for line in lines {
+                match line {
+                    Ok(line) => {
+                        println!("{}", line);
+                    }
+                    Err(err) => {
+                        panic!("Cannot read line in {} - {}", path.display(), err);
+                    }
+                }
             }
+        }
+        Err(err) => {
+            panic!("Cannot read file {} - {}", path.display(), err);
         }
     }
 }
@@ -26,4 +35,10 @@ where
 {
     let file = File::open(filename)?;
     Ok(std::io::BufReader::new(file).lines())
+}
+
+/// Add the first and last digit characters in the string together.
+fn line_sum(line: String) -> u32 {
+    // TODO
+    0
 }
