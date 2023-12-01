@@ -41,7 +41,7 @@ where
 
 /// Concatenate the first and last digit characters in the string together.
 fn secret_number(line: &String) -> u32 {
-    let regex = Regex::new(r"(?:(\d).*(\d)[^\n$]*(?:\n|$)|(\d).*(?:\n|$))").expect("vaild regex");
+    let regex = Regex::new(r"(?:(\d).*(\d).*|(\d).*)").expect("vaild regex");
     for caps in regex.captures_iter(line) {
         if caps.len() != 4 {
             panic!("line '{line}' has {} captures", caps.len());
