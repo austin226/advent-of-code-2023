@@ -5,16 +5,14 @@ use std::io::prelude::*;
 use std::path::Path;
 
 pub fn run() {
-    println!("Day 1");
-
     // Create a path to the desired file
     let path = Path::new("src/day1/input.txt");
 
     if let Ok(lines) = read_lines(path) {
         // Consumes the iterator, returns an (Optional) String
         for line in lines {
-            if let Ok(ip) = line {
-                println!("{}", ip);
+            if let Ok(line) = line {
+                println!("{}", line);
             }
         }
     }
