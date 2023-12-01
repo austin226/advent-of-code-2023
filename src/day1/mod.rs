@@ -7,15 +7,14 @@ use std::path::Path;
 
 pub fn run() {
     // Create a path to the desired file
-    let path = Path::new("src/day1/input.txt");
-
+    let path = Path::new("src/day1/input2.txt");
+    let mut sum = 0;
     match read_lines(path) {
         Ok(lines) => {
             for line in lines {
                 match line {
                     Ok(line) => {
-                        let secret_number = secret_number(&line);
-                        println!("{} / {}", secret_number, line);
+                        sum += secret_number(&line);
                     }
                     Err(err) => {
                         panic!("Cannot read line in {} - {}", path.display(), err);
@@ -27,6 +26,8 @@ pub fn run() {
             panic!("Cannot read file {} - {}", path.display(), err);
         }
     }
+
+    println!("{}", sum);
 }
 
 // The output is wrapped in a Result to allow matching on errors
