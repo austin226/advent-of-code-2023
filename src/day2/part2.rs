@@ -1,15 +1,8 @@
 // https://adventofcode.com/2023/day/2
 
-use std::{
-    cmp::{max, min},
-    path::Path,
-};
+use std::{cmp::max, path::Path};
 
 use crate::common::read_lines;
-
-const N_RED: u32 = 12;
-const N_GREEN: u32 = 13;
-const N_BLUE: u32 = 14;
 
 #[derive(Debug, Default)]
 struct CubeCounts {
@@ -42,26 +35,18 @@ impl CubeCounts {
 
 #[derive(Debug)]
 struct Game {
-    id: u32,
     cube_counts: CubeCounts,
 }
 
 impl Game {
-    fn new(id: u32) -> Self {
+    fn new() -> Self {
         Self {
-            id,
             cube_counts: CubeCounts::default(),
         }
     }
 
     fn add_turn(&mut self, turn: Turn) {
         self.cube_counts.update_min(turn.cube_counts);
-    }
-
-    fn is_possible(&self) -> bool {
-        self.cube_counts.red.unwrap_or(0) <= N_RED
-            && self.cube_counts.green.unwrap_or(0) <= N_GREEN
-            && self.cube_counts.blue.unwrap_or(0) <= N_BLUE
     }
 }
 
@@ -117,27 +102,16 @@ pub fn run() {
                 match line {
                     Ok(line) => {
                         let s: Vec<&str> = line.split(": ").collect();
-
-                        let game_and_id: Vec<&str> = s[0].split(" ").collect();
-                        let game_id: u32 = game_and_id[1].to_string().parse().unwrap();
-
-                        let mut game = Game::new(game_id);
+                        let mut game = Game::new();
 
                         let turn_summaries: Vec<&str> = s[1].split("; ").collect();
                         for turn_summary in turn_summaries.iter() {
                             let turn = Turn::parse(&turn_summary);
-                            println!("turn: {:?}", turn);
                             game.add_turn(turn);
                         }
 
-                        if game.is_possible() {
-                            println!(
-                                "{:?} is possible (power={})",
-                                game,
-                                game.cube_counts.power()
-                            );
-                            sum += game.id;
-                        }
+                        println!("{:?} (power={})", game, game.cube_counts.power());
+                        sum += game.cube_counts.power();
                     }
                     Err(err) => {
                         panic!("Cannot read line in {} - {}", path.display(), err);
