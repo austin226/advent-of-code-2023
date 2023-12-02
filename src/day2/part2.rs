@@ -1,6 +1,9 @@
 // https://adventofcode.com/2023/day/2
 
-use std::{cmp::min, path::Path};
+use std::{
+    cmp::{max, min},
+    path::Path,
+};
 
 use crate::common::read_lines;
 
@@ -10,24 +13,30 @@ const N_BLUE: u32 = 14;
 
 #[derive(Debug, Default)]
 struct CubeCounts {
-    red: u32,
-    green: u32,
-    blue: u32,
+    red: Option<u32>,
+    green: Option<u32>,
+    blue: Option<u32>,
 }
 
 impl CubeCounts {
     fn default() -> Self {
         Self {
-            red: 0,
-            green: 0,
-            blue: 0,
+            red: None,
+            green: None,
+            blue: None,
         }
     }
 
     fn update_min(&mut self, other: CubeCounts) {
-        self.red = min(self.red, other.red);
-        self.green = min(self.green, other.green);
-        self.blue = min(self.blue, other.blue);
+        self.red = max_or_take(self.red, other.red);
+        self.green = max_or_take(self.green, other.green);
+        self.blue = max_or_take(self.blue, other.blue);
+    }
+
+    fn power(&self) -> u64 {
+        self.red.unwrap_or(0) as u64
+            * self.green.unwrap_or(0) as u64
+            * self.blue.unwrap_or(0) as u64
     }
 }
 
@@ -50,9 +59,9 @@ impl Game {
     }
 
     fn is_possible(&self) -> bool {
-        self.cube_counts.red <= N_RED
-            && self.cube_counts.green <= N_GREEN
-            && self.cube_counts.blue <= N_BLUE
+        self.cube_counts.red.unwrap_or(0) <= N_RED
+            && self.cube_counts.green.unwrap_or(0) <= N_GREEN
+            && self.cube_counts.blue.unwrap_or(0) <= N_BLUE
     }
 }
 
@@ -90,13 +99,17 @@ impl Turn {
         }
 
         Self {
-            cube_counts: CubeCounts { red, green, blue },
+            cube_counts: CubeCounts {
+                red: none_if_zero(red),
+                green: none_if_zero(green),
+                blue: none_if_zero(blue),
+            },
         }
     }
 }
 
 pub fn run() {
-    let path = Path::new("src/day2/input1.txt");
+    let path = Path::new("src/day2/input0.txt");
     let mut sum = 0;
     match read_lines(path) {
         Ok(lines) => {
@@ -113,11 +126,16 @@ pub fn run() {
                         let turn_summaries: Vec<&str> = s[1].split("; ").collect();
                         for turn_summary in turn_summaries.iter() {
                             let turn = Turn::parse(&turn_summary);
+                            println!("turn: {:?}", turn);
                             game.add_turn(turn);
                         }
 
                         if game.is_possible() {
-                            println!("{:?} is possible", game);
+                            println!(
+                                "{:?} is possible (power={})",
+                                game,
+                                game.cube_counts.power()
+                            );
                             sum += game.id;
                         }
                     }
@@ -134,4 +152,24 @@ pub fn run() {
 
     // Determine which games would have been possible if the bag had been loaded with only 12 red cubes, 13 green cubes, and 14 blue cubes. What is the sum of the IDs of those games?
     println!("{}", sum);
+}
+
+fn none_if_zero(n: u32) -> Option<u32> {
+    if n == 0 {
+        None
+    } else {
+        Some(n)
+    }
+}
+
+fn max_or_take(mine: Option<u32>, theirs: Option<u32>) -> Option<u32> {
+    if let Some(theirs) = theirs {
+        Some(if let Some(mine) = mine {
+            max(mine, theirs)
+        } else {
+            theirs
+        })
+    } else {
+        mine
+    }
 }
