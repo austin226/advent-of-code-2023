@@ -44,7 +44,6 @@ struct Turn {
 impl Turn {
     fn parse(summary: &str) -> Self {
         let colors_str: Vec<&str> = summary.split(", ").collect();
-        println!("colors: {:?}", colors_str);
 
         let mut red = 0;
         let mut green = 0;
@@ -75,7 +74,7 @@ impl Turn {
 }
 
 pub fn run() {
-    let path = Path::new("src/day2/input0.txt");
+    let path = Path::new("src/day2/input1.txt");
     let mut sum = 0;
     match read_lines(path) {
         Ok(lines) => {
@@ -96,7 +95,6 @@ pub fn run() {
                         }
 
                         if game.is_possible() {
-                            println!("Game {:?} is possible", game);
                             sum += game.id;
                         }
                     }
@@ -112,5 +110,5 @@ pub fn run() {
     }
 
     // Determine which games would have been possible if the bag had been loaded with only 12 red cubes, 13 green cubes, and 14 blue cubes. What is the sum of the IDs of those games?
-    println!("sum: {}", sum);
+    println!("{}", sum);
 }
