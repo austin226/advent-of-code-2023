@@ -1,6 +1,6 @@
 // https://adventofcode.com/2023/day/2
 
-use std::{cmp::max, path::Path};
+use std::{cmp::min, path::Path};
 
 use crate::common::read_lines;
 
@@ -24,10 +24,10 @@ impl CubeCounts {
         }
     }
 
-    fn update_max(&mut self, other: CubeCounts) {
-        self.red = max(self.red, other.red);
-        self.green = max(self.green, other.green);
-        self.blue = max(self.blue, other.blue);
+    fn update_min(&mut self, other: CubeCounts) {
+        self.red = min(self.red, other.red);
+        self.green = min(self.green, other.green);
+        self.blue = min(self.blue, other.blue);
     }
 }
 
@@ -46,7 +46,7 @@ impl Game {
     }
 
     fn add_turn(&mut self, turn: Turn) {
-        self.cube_counts.update_max(turn.cube_counts);
+        self.cube_counts.update_min(turn.cube_counts);
     }
 
     fn is_possible(&self) -> bool {
