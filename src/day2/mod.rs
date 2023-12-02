@@ -1,6 +1,6 @@
 // https://adventofcode.com/2023/day/2
 
-use std::path::Path;
+use std::{cmp::max, path::Path};
 
 use crate::common::read_lines;
 
@@ -8,37 +8,57 @@ const N_RED: u32 = 12;
 const N_GREEN: u32 = 13;
 const N_BLUE: u32 = 14;
 
+#[derive(Debug, Default)]
+struct CubeCounts {
+    red: u32,
+    green: u32,
+    blue: u32,
+}
+
+impl CubeCounts {
+    fn default() -> Self {
+        Self {
+            red: 0,
+            green: 0,
+            blue: 0,
+        }
+    }
+
+    fn update_max(&mut self, other: CubeCounts) {
+        self.red = max(self.red, other.red);
+        self.green = max(self.green, other.green);
+        self.blue = max(self.blue, other.blue);
+    }
+}
+
 #[derive(Debug)]
 struct Game {
     id: u32,
-    turns: Vec<Turn>,
+    cube_counts: CubeCounts,
 }
 
 impl Game {
     fn new(id: u32) -> Self {
         Self {
             id,
-            turns: Vec::new(),
+            cube_counts: CubeCounts::default(),
         }
     }
 
     fn add_turn(&mut self, turn: Turn) {
-        self.turns.push(turn);
+        self.cube_counts.update_max(turn.cube_counts);
     }
 
     fn is_possible(&self) -> bool {
-        let (red, green, blue) = self.turns.iter().fold((0, 0, 0), |sum, turn| {
-            (sum.0 + turn.red, sum.1 + turn.green, sum.2 + turn.blue)
-        });
-        red <= N_RED && green <= N_GREEN && blue <= N_BLUE
+        self.cube_counts.red <= N_RED
+            && self.cube_counts.green <= N_GREEN
+            && self.cube_counts.blue <= N_BLUE
     }
 }
 
 #[derive(Debug)]
 struct Turn {
-    red: u32,
-    green: u32,
-    blue: u32,
+    cube_counts: CubeCounts,
 }
 
 impl Turn {
@@ -69,7 +89,9 @@ impl Turn {
             };
         }
 
-        Self { red, green, blue }
+        Self {
+            cube_counts: CubeCounts { red, green, blue },
+        }
     }
 }
 
@@ -95,6 +117,7 @@ pub fn run() {
                         }
 
                         if game.is_possible() {
+                            println!("{:?} is possible", game);
                             sum += game.id;
                         }
                     }
