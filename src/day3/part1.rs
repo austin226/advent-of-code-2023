@@ -48,7 +48,7 @@ struct SchematicNumber {
 }
 
 pub fn run() {
-    let input = get_input("src/day3/input0.txt");
+    let input = get_input("src/day3/input1.txt");
 
     // Handle 0 case
     let n_rows = input.len();
