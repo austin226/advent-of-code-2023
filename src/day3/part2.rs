@@ -49,7 +49,7 @@ struct SchematicNumber {
 }
 
 pub fn run() {
-    let input = get_input("src/day3/input0.txt");
+    let input = get_input("src/day3/input1.txt");
 
     // Handle 0 case
     let n_rows = input.len();
@@ -125,7 +125,7 @@ pub fn run() {
 
     // println!("Schematic numbers: {:?}", schematic_numbers);
     // println!("Symbol locations: {:?}", symbol_locations);
-    println!("Parsed {} rows, {} cols", n_rows, n_cols);
+    // println!("Parsed {} rows, {} cols", n_rows, n_cols);
 
     let mut sum = 0;
     for star_loc in star_locations {
@@ -136,7 +136,7 @@ pub fn run() {
                 neighbor_part_nums.push(found_number.clone());
 
                 // Remove the part number so we don't count it twice for this neighbor
-                println!("Found {:?}", found_number);
+                // println!("Found {:?}", found_number);
                 schematic_numbers_in_row.remove(found_number.range.clone());
             }
         }
@@ -144,7 +144,7 @@ pub fn run() {
         // Calculate the gear ratio, if any
         if neighbor_part_nums.len() == 2 {
             let gear_ratio = neighbor_part_nums[0].value * neighbor_part_nums[1].value;
-            println!("Adding gear ratio {gear_ratio}");
+            // println!("Adding gear ratio {gear_ratio}");
             sum += gear_ratio;
         }
 
