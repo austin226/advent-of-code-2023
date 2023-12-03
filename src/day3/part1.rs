@@ -1,5 +1,6 @@
 // https://adventofcode.com/2023/day/3
 
+use rangemap::RangeMap;
 use std::ops::Range;
 
 use crate::common::get_input;
@@ -16,21 +17,17 @@ impl Point {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 struct SchematicNumber {
-    row: i32,
-    col_range: Range<i32>,
     value: i32, // TODO - may need bigint since input can be 140 chars wide (10^140)
     is_part_number: bool,
 }
 
 impl SchematicNumber {
-    fn new(row: i32, col_range: Range<i32>, chars: Vec<char>) -> Self {
+    fn new(chars: Vec<char>) -> Self {
         let num_str: String = chars.into_iter().collect();
         let value = num_str.parse().expect("converting string to i32");
         Self {
-            row,
-            col_range,
             value,
             is_part_number: false,
         }
@@ -46,6 +43,7 @@ pub fn run() {
 
     let mut row: i32 = 0;
     for line in input {
+        let mut schematic_number_in_row = RangeMap::new();
         let mut curr_num_chars = Vec::new();
         let mut curr_num_start_col = -1;
         let mut col: i32 = 0;
@@ -58,12 +56,10 @@ pub fn run() {
                 curr_num_chars.push(c);
             } else {
                 if curr_num_chars.len() > 0 {
-                    // Done with the input for a number - add it to the list of schematic numbers
-                    schematic_numbers.push(SchematicNumber::new(
-                        row,
-                        curr_num_start_col..col,
-                        curr_num_chars,
-                    ));
+                    // Done with the input for a number - add it to the map of schematic numbers
+                    let col_range = curr_num_start_col..col;
+                    schematic_number_in_row.insert(col_range, SchematicNumber::new(curr_num_chars));
+
                     curr_num_chars = Vec::new();
                     curr_num_start_col = -1;
                 }
@@ -75,6 +71,7 @@ pub fn run() {
             }
             col += 1;
         }
+        schematic_numbers.push(schematic_number_in_row);
         row += 1;
     }
 
