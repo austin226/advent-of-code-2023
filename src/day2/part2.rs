@@ -94,7 +94,7 @@ impl Turn {
 }
 
 pub fn run() {
-    let path = Path::new("src/day2/input0.txt");
+    let path = Path::new("src/day2/input1.txt");
     let mut sum = 0;
     match read_lines(path) {
         Ok(lines) => {
