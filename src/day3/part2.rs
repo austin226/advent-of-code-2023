@@ -44,11 +44,12 @@ impl Point {
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct SchematicNumber {
     value: i32,
+    row: usize,
     range: RangeInclusive<usize>,
 }
 
 pub fn run() {
-    let input = get_input("src/day3/input1.txt");
+    let input = get_input("src/day3/input0.txt");
 
     // Handle 0 case
     let n_rows = input.len();
@@ -64,7 +65,7 @@ pub fn run() {
 
     // Collect all schematic numbers and other symbols
     let mut schematic_numbers = Vec::new();
-    let mut symbol_locations = Vec::new();
+    let mut star_locations = Vec::new();
 
     let mut row: usize = 0;
     for line in input {
@@ -87,6 +88,7 @@ pub fn run() {
                         range.clone(),
                         SchematicNumber {
                             value: parse_num(curr_num_chars),
+                            row,
                             range,
                         },
                     );
@@ -95,9 +97,9 @@ pub fn run() {
                     curr_num_start_col = None;
                 }
 
-                if c != '.' {
-                    // Found a symbol location
-                    symbol_locations.push(Point { row, col });
+                if c == '*' {
+                    // Found a star location
+                    star_locations.push(Point { row, col });
                 }
             }
             col += 1;
@@ -111,6 +113,7 @@ pub fn run() {
                 range.clone(),
                 SchematicNumber {
                     value: parse_num(curr_num_chars),
+                    row,
                     range,
                 },
             );
@@ -125,14 +128,30 @@ pub fn run() {
     println!("Parsed {} rows, {} cols", n_rows, n_cols);
 
     let mut sum = 0;
-    for symbol_location in symbol_locations {
-        for neighbor in symbol_location.neighbors(n_rows, n_cols) {
+    for star_loc in star_locations {
+        let mut neighbor_part_nums = Vec::new();
+        for neighbor in star_loc.neighbors(n_rows, n_cols) {
             let schematic_numbers_in_row = &mut schematic_numbers[neighbor.row];
             if let Some(found_number) = schematic_numbers_in_row.get(&neighbor.col) {
-                // println!("Found {:?}", found_number);
-                sum += found_number.value;
+                neighbor_part_nums.push(found_number.clone());
+
+                // Remove the part number so we don't count it twice for this neighbor
+                println!("Found {:?}", found_number);
                 schematic_numbers_in_row.remove(found_number.range.clone());
             }
+        }
+
+        // Calculate the gear ratio, if any
+        if neighbor_part_nums.len() == 2 {
+            let gear_ratio = neighbor_part_nums[0].value * neighbor_part_nums[1].value;
+            println!("Adding gear ratio {gear_ratio}");
+            sum += gear_ratio;
+        }
+
+        // Re-insert the part numbers so another gear can detect it
+        for part_num in neighbor_part_nums {
+            let clone = part_num.clone();
+            schematic_numbers[part_num.row].insert(part_num.range, clone);
         }
     }
     println!("{}", sum);
