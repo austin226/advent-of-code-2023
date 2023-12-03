@@ -9,17 +9,29 @@ struct Point {
     col: i32,
 }
 
+impl Point {
+    fn new(row: i32, col: i32) -> Self {
+        Self { row, col }
+    }
+}
+
+#[derive(Debug)]
 struct SchematicNumber {
-    start: Point,
-    end: Point,
+    row: i32,
+    col_range: Range<i32>,
     value: i32, // TODO - may need bigint since input can be 140 chars wide (10^140)
     is_part_number: bool,
 }
 
 impl SchematicNumber {
     fn new(row: i32, col_range: Range<i32>, chars: Vec<char>) -> Self {
+        let num_str: String = chars.into_iter().collect();
+        let value = num_str.parse().expect("converting string to i32");
         Self {
-            // TODO
+            row,
+            col_range,
+            value,
+            is_part_number: false,
         }
     }
 }
@@ -45,7 +57,7 @@ pub fn run() {
                 curr_num_chars.push(c);
             } else {
                 if curr_num_chars.len() > 0 {
-                    // Done with the input for a number - add it to the list of schematic numbmers
+                    // Done with the input for a number - add it to the list of schematic numbers
                     schematic_numbers.push(SchematicNumber::new(
                         row,
                         curr_num_start_col..col,
@@ -65,15 +77,10 @@ pub fn run() {
         row += 1;
     }
 
+    println!("{:?}", schematic_numbers);
     // TODO now analyze the schematic_numbers and symbol_locations to calculate the answer
 }
 
 fn is_number(c: char) -> bool {
-    // TODO
-    false
-}
-
-fn is_symbol(c: char) -> bool {
-    // TODO
-    false
+    c >= '0' && c <= '9'
 }
