@@ -4,6 +4,7 @@ use std::ops::Range;
 
 use crate::common::get_input;
 
+#[derive(Debug)]
 struct Point {
     row: i32,
     col: i32,
@@ -77,7 +78,8 @@ pub fn run() {
         row += 1;
     }
 
-    println!("{:?}", schematic_numbers);
+    println!("Schematic numbers: {:?}", schematic_numbers);
+    println!("Symbol locations: {:?}", symbol_locations);
     // TODO now analyze the schematic_numbers and symbol_locations to calculate the answer
 }
 
