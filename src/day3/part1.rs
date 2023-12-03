@@ -30,8 +30,8 @@ impl Point {
             (0, -1),
             (1, -1),
         ] {
-            let row = self.row as i32 + dx;
-            let col = self.col as i32 + dy;
+            let row = self.row as i32 + dy;
+            let col = self.col as i32 + dx;
             if (0..n_rows as i32).contains(&row) && (0..n_cols as i32).contains(&col) {
                 neighbors.push(Point::new(row as usize, col as usize));
             }
@@ -102,12 +102,27 @@ pub fn run() {
             }
             col += 1;
         }
+
+        // Handle number at end of line
+        if let Some(start_col) = curr_num_start_col {
+            // Done with the input for a number - add it to the map of schematic numbers
+            let range = start_col..=(col - 1);
+            schematic_numbers_in_row.insert(
+                range.clone(),
+                SchematicNumber {
+                    value: parse_num(curr_num_chars),
+                    range,
+                },
+            );
+        }
+
         schematic_numbers.push(schematic_numbers_in_row);
         row += 1;
     }
 
     // println!("Schematic numbers: {:?}", schematic_numbers);
     // println!("Symbol locations: {:?}", symbol_locations);
+    println!("Parsed {} rows, {} cols", n_rows, n_cols);
 
     let mut sum = 0;
     for symbol_location in symbol_locations {
