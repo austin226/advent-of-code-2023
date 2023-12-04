@@ -1,35 +1,36 @@
-use queues::*;
 use std::collections::HashSet;
 
 use crate::common::get_input;
 
+#[derive(Debug)]
+struct Scratchcard {
+    value: i32,
+    multiplier: i32,
+}
+
 pub fn run() {
-    let input = get_input("src/day4/input0.txt");
+    let input = get_input("src/day4/input1.txt");
 
-    let mut scratchcard_values = Vec::new();
-    let mut scratchcard_index_queue: Queue<usize> = queue![];
-
-    for (line_index, line) in input.iter().enumerate() {
+    let mut scratchcards = Vec::new();
+    for line in input {
         // Save the value of this card V
-        let scratchcard_value = get_scratchcard_value(&parse_line_numbers(line));
-        scratchcard_values.push(scratchcard_value);
-
-        // Queue this card
-        let _ = scratchcard_index_queue.add(line_index);
+        let scratchcard_value = get_scratchcard_value(&parse_line_numbers(&line));
+        scratchcards.push(Scratchcard {
+            value: scratchcard_value,
+            multiplier: 1,
+        });
     }
 
-    let mut sum = 0;
-    while let Ok(scratchcard_index) = scratchcard_index_queue.remove() {
-        let v = scratchcard_values[scratchcard_index];
-
-        // Queue the next V cards
-        for i in (scratchcard_index + 1)..=(scratchcard_index + v as usize) {
-            let _ = scratchcard_index_queue.add(i);
+    for i in 0..scratchcards.len() {
+        for j in 1..=scratchcards[i].value as usize {
+            scratchcards[i + j].multiplier += scratchcards[i].multiplier;
         }
-
-        // Count this card
-        sum += 1;
     }
+
+    let sum = scratchcards
+        .iter()
+        .map(|sc| sc.multiplier)
+        .fold(0, |acc, x| acc + x);
 
     println!("{}", sum);
 }
