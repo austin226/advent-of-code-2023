@@ -87,33 +87,43 @@ pub fn run() {
         all_types.insert(src, curr_map_t.clone());
     }
 
+    // sort each map type by initial dst
+    for map_type in all_types.values_mut() {
+        map_type
+            .maps
+            .sort_by(|a, b| a.dst_range_start.cmp(&b.dst_range_start));
+    }
+    println!("{:?}", all_types);
+    // TODO - try going in reverse - for each number in humidity-to-location map, see if it corresponds to a seed?
+    let map = &all_types["humidity"];
+
     // Find the lowest "location" number that coresponds to any of the initial "seed"s
     let mut min_loc_num: Option<u64> = None;
     println!("{:?}", seed_ranges);
     let total_seeds = seed_ranges.iter().fold(0, |acc, r| acc + r.end - r.start);
-    let bar = ProgressBar::new(total_seeds);
+    // let bar = ProgressBar::new(total_seeds);
 
-    for seed_range in seed_ranges {
-        // TODO this approach is too slow!
-        for seed in seed_range {
-            bar.inc(1);
-            let mut mat = seed;
-            let mut map_type_name = "seed";
-            while map_type_name != "location" {
-                let map_type = all_types.get(map_type_name).unwrap();
-                mat = map_type.convert(mat);
-                map_type_name = map_type.dst.as_str();
-            }
+    // for seed_range in seed_ranges {
+    //     // TODO this approach is too slow!
+    //     for seed in seed_range {
+    //         bar.inc(1);
+    //         let mut mat = seed;
+    //         let mut map_type_name = "seed";
+    //         while map_type_name != "location" {
+    //             let map_type = all_types.get(map_type_name).unwrap();
+    //             mat = map_type.convert(mat);
+    //             map_type_name = map_type.dst.as_str();
+    //         }
 
-            let location_num = mat;
-            if min_loc_num.is_none() {
-                min_loc_num = Some(location_num);
-            } else {
-                min_loc_num = Some(std::cmp::min(min_loc_num.unwrap(), location_num));
-            }
-        }
-    }
-    bar.finish();
+    //         let location_num = mat;
+    //         if min_loc_num.is_none() {
+    //             min_loc_num = Some(location_num);
+    //         } else {
+    //             min_loc_num = Some(std::cmp::min(min_loc_num.unwrap(), location_num));
+    //         }
+    //     }
+    // }
+    // bar.finish();
 
-    println!("min={:?}", min_loc_num.unwrap());
+    // println!("min={:?}", min_loc_num.unwrap());
 }
