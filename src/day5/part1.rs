@@ -14,7 +14,7 @@ struct MatMapType {
 }
 
 impl MatMapType {
-    fn convert(&self, key: u32) -> u32 {
+    fn convert(&self, key: u64) -> u64 {
         for map in self.maps.iter() {
             if (map.src_range_start..(map.src_range_start + map.range_len)).contains(&key) {
                 return key - map.src_range_start + map.dst_range_start;
@@ -27,18 +27,18 @@ impl MatMapType {
 
 #[derive(Clone, Debug)]
 struct MatMap {
-    dst_range_start: u32,
-    src_range_start: u32,
-    range_len: u32,
+    dst_range_start: u64,
+    src_range_start: u64,
+    range_len: u64,
 }
 
 pub fn run() {
-    let input = get_input("src/day5/input0.txt");
+    let input = get_input("src/day5/input1.txt");
 
     let seeds: Vec<&str> = input[0].split(": ").collect();
-    let seeds: Vec<u32> = seeds[1]
+    let seeds: Vec<u64> = seeds[1]
         .split_ascii_whitespace()
-        .map(|n| n.to_string().parse::<u32>().unwrap())
+        .map(|n| n.to_string().parse::<u64>().unwrap())
         .collect();
 
     let mut all_types = HashMap::new();
@@ -65,9 +65,9 @@ pub fn run() {
             });
         } else if curr_map_type.is_some() {
             // This adds a map to the type
-            let map_nums: Vec<u32> = line
+            let map_nums: Vec<u64> = line
                 .split_ascii_whitespace()
-                .map(|n| n.to_string().parse::<u32>().unwrap())
+                .map(|n| n.to_string().parse::<u64>().unwrap())
                 .collect();
             let map_type = curr_map_type.as_mut().unwrap();
             let map = MatMap {
@@ -85,7 +85,7 @@ pub fn run() {
     }
 
     // Find the lowest "location" number that coresponds to any of the initial "seed"s
-    let mut min_loc_num: Option<u32> = None;
+    let mut min_loc_num: Option<u64> = None;
     for seed in seeds {
         let mut mat = seed;
         let mut map_type_name = "seed";
