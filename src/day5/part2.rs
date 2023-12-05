@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use indicatif::ProgressBar;
 use std::{collections::HashMap, ops::Range};
 
 use crate::common::get_input;
@@ -30,18 +30,19 @@ struct MatMap {
 }
 
 pub fn run() {
-    let input = get_input("src/day5/input0.txt");
+    let input = get_input("src/day5/input1.txt");
 
     let seed_strs: Vec<&str> = input[0].split(": ").collect();
     let seed_pairs: Vec<u64> = seed_strs[1]
         .split_ascii_whitespace()
         .map(|n| n.to_string().parse::<u64>().unwrap())
         .collect();
-    let seed_ranges: Vec<Range<u64>> = seed_pairs
+    let mut seed_ranges: Vec<Range<u64>> = seed_pairs
         .chunks(2)
         .map(|chunk| chunk[0]..(chunk[0] + chunk[1]))
         .collect();
-    println!("{:?}", seed_ranges);
+    seed_ranges.sort_by(|a, b| a.start.partial_cmp(&b.start).unwrap());
+    let seed_ranges = seed_ranges;
 
     let mut all_types = HashMap::new();
     let mut curr_map_type: Option<MatMapType> = None;
@@ -88,8 +89,14 @@ pub fn run() {
 
     // Find the lowest "location" number that coresponds to any of the initial "seed"s
     let mut min_loc_num: Option<u64> = None;
+    println!("{:?}", seed_ranges);
+    let total_seeds = seed_ranges.iter().fold(0, |acc, r| acc + r.end - r.start);
+    let bar = ProgressBar::new(total_seeds);
+
     for seed_range in seed_ranges {
+        // TODO this approach is too slow!
         for seed in seed_range {
+            bar.inc(1);
             let mut mat = seed;
             let mut map_type_name = "seed";
             while map_type_name != "location" {
@@ -106,6 +113,7 @@ pub fn run() {
             }
         }
     }
+    bar.finish();
 
     println!("min={:?}", min_loc_num.unwrap());
 }
