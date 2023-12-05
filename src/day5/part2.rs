@@ -93,13 +93,18 @@ pub fn run() {
             .maps
             .sort_by(|a, b| a.dst_range_start.cmp(&b.dst_range_start));
     }
-    println!("{:?}", all_types);
     // TODO - try going in reverse - for each number in humidity-to-location map, see if it corresponds to a seed?
-    let map = &all_types["humidity"];
+
+    let location_ranges: Vec<Range<u64>> = all_types["humidity"]
+        .maps
+        .iter()
+        .map(|map| (map.dst_range_start..(map.dst_range_start + map.range_len)))
+        .collect();
+    // TODO find the lowest location_range that corresponds to a humidity?
 
     // Find the lowest "location" number that coresponds to any of the initial "seed"s
     let mut min_loc_num: Option<u64> = None;
-    println!("{:?}", seed_ranges);
+    // println!("{:?}", seed_ranges);
     let total_seeds = seed_ranges.iter().fold(0, |acc, r| acc + r.end - r.start);
     // let bar = ProgressBar::new(total_seeds);
 
