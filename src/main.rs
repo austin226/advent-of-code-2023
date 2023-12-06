@@ -7,5 +7,5 @@ mod day5;
 mod day6;
 
 fn main() {
-    day6::run();
+    day5::run();
 }
