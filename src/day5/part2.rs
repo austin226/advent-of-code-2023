@@ -17,7 +17,7 @@ impl MatMapType {
                 return key - map.src_range_start + map.dst_range_start;
             }
         }
-        // Any unmapped src corresponds to sam edst number
+        // Any unmapped src corresponds to same dst number
         key
     }
 }
@@ -27,6 +27,16 @@ struct MatMap {
     dst_range_start: u64,
     src_range_start: u64,
     range_len: u64,
+}
+
+impl MatMap {
+    fn contains(&self, n: u64) -> bool {
+        (self.src_range_start..(self.src_range_start + self.range_len)).contains(&n)
+    }
+
+    fn src_end(&self) -> u64 {
+        self.src_range_start + self.range_len
+    }
 }
 
 pub fn run() {
