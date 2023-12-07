@@ -5,6 +5,7 @@ use itertools::Itertools;
 
 use crate::common::get_input;
 
+const JOKER_VALUE: usize = 0;
 const CARD_NAMES: [char; 13] = [
     'J', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'Q', 'K', 'A',
 ];
@@ -62,12 +63,28 @@ impl Hand {
     }
 
     fn hand_type(&self) -> HandType {
-        let freqs = self
+        let card_freqs = self.card_freqs();
+        let n_jokers = *card_freqs.get(&JOKER_VALUE).unwrap_or(&0);
+
+        let mut freqs = self
             .card_freqs()
             .values()
             .sorted()
             .map(|f| *f)
             .collect_vec();
+
+        for _ in 0..n_jokers {
+            // Add a joker to the most frequent card's count, and remove the least frequent card.
+            let last_freq_idx = freqs.len() - 1;
+            freqs[last_freq_idx] += 1;
+
+            if freqs[0] == 1 {
+                freqs.remove(0);
+            } else {
+                freqs[0] -= 1;
+            }
+        }
+
         match freqs[..] {
             [5] => HandType::FiveOfKind,
             [1, 4] => HandType::FourOfKind,
