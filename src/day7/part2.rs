@@ -83,7 +83,7 @@ impl Hand {
             debug_assert_eq!(freqs.len(), self.card_freqs().len() - 1);
         }
 
-        println!("Hand: {:?} - freqs is {:?}", self, freqs);
+        // println!("Hand: {:?} - freqs is {:?}", self, freqs);
         for _ in 0..n_jokers {
             if freqs.len() == 0 {
                 // hand is only jokers
@@ -92,7 +92,7 @@ impl Hand {
                 // Add a joker to the most frequent non-joker card's count.
                 *freqs.last_mut().unwrap() += 1;
             }
-            println!("Processed joker - freqs is now {:?}", freqs);
+            // println!("Processed joker - freqs is now {:?}", freqs);
         }
 
         match freqs[..] {
@@ -108,7 +108,7 @@ impl Hand {
 }
 
 pub fn run() {
-    let input = get_input("src/day7/input0.txt");
+    let input = get_input("src/day7/input1.txt");
 
     let card_values_map: HashMap<char, usize> = CARD_NAMES
         .iter()
