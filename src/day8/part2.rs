@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use crate::common::get_input;
+use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use regex::Regex;
 
@@ -36,11 +37,11 @@ impl Direction {
 }
 
 pub fn run() {
-    let input = get_input("src/day8/input3.txt");
+    let input = get_input("src/day8/input2.txt");
 
     let directions = parse_directions(&input[0]);
     let nodes = parse_nodes(&input);
-    println!("{:?}", nodes);
+    // println!("{:?}", nodes);
 
     // Start at all nodes ending in A
     let mut current_nodes = nodes
@@ -52,10 +53,20 @@ pub fn run() {
     let mut n_steps = 0;
     println!("Started at {:?}", current_nodes);
 
+    let pb = ProgressBar::new_spinner();
+    pb.enable_steady_tick(Duration::from_millis(120));
+    pb.set_style(
+        ProgressStyle::with_template("{spinner:.blue} {msg}")
+            .unwrap()
+            .tick_strings(&["_..", "._.", ".._", "..."]),
+    );
+    println!("Stepping...");
+
     // While not all current nodes end in z
     while !current_nodes.iter().all(|n| n.ends_with("Z")) {
         // Count each step.
         n_steps += 1;
+        pb.set_message(format!("{}", n_steps));
 
         let direction = &directions[dir_idx];
 
@@ -63,7 +74,7 @@ pub fn run() {
             .iter()
             .map(|n| nodes[n].next(direction))
             .collect_vec();
-        println!("{:?} to {:?}", direction, current_nodes);
+        // println!("{:?} to {:?}", direction, current_nodes);
 
         // Go to next direction, or wrap back around.
         dir_idx = if dir_idx == directions.len() - 1 {
@@ -72,6 +83,7 @@ pub fn run() {
             dir_idx + 1
         };
     }
+    pb.finish_with_message("Done");
 
     println!("{n_steps} steps.");
 }
