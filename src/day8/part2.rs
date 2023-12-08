@@ -1,4 +1,7 @@
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::HashMap,
+    time::{Duration, SystemTime},
+};
 
 use crate::common::get_input;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -61,12 +64,17 @@ pub fn run() {
             .tick_strings(&["_..", "._.", ".._", "..."]),
     );
     println!("Stepping...");
+    let now = SystemTime::now();
 
     // While not all current nodes end in z
     while !current_nodes.iter().all(|n| n.ends_with("Z")) {
         // Count each step.
         n_steps += 1;
-        pb.set_message(format!("{}", n_steps));
+        pb.set_message(format!(
+            "{} ({:.0})",
+            n_steps,
+            now.elapsed().unwrap().as_secs()
+        ));
 
         let direction = &directions[dir_idx];
 
