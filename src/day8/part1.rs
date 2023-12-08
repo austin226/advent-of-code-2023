@@ -35,7 +35,7 @@ impl Direction {
 }
 
 pub fn run() {
-    let input = get_input("src/day8/input1.txt");
+    let input = get_input("src/day8/input2.txt");
 
     let directions = parse_directions(&input[0]);
     let nodes = parse_nodes(&input);
@@ -44,14 +44,14 @@ pub fn run() {
     let mut current_node = "AAA".to_string();
     let mut dir_idx = 0;
     let mut n_steps = 0;
-    println!("Started at {current_node}");
+    // println!("Started at {current_node}");
     while current_node != "ZZZ" {
         // Count each step.
         n_steps += 1;
 
         let direction = &directions[dir_idx];
         current_node = nodes[&current_node].next(direction);
-        println!("{:?} to {current_node}", direction);
+        // println!("{:?} to {current_node}", direction);
 
         // Go to next direction, or wrap back around.
         dir_idx = if dir_idx == directions.len() - 1 {
