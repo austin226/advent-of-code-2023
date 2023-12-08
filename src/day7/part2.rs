@@ -10,7 +10,7 @@ const CARD_NAMES: [char; 13] = [
     'J', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'Q', 'K', 'A',
 ];
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum HandType {
     HighCard = 0,
     OnePair = 1,
@@ -62,27 +62,37 @@ impl Hand {
             })
     }
 
+    fn non_joker_freqs(&self) -> Vec<u8> {
+        self.card_freqs()
+            .into_iter()
+            .filter(|f| f.0 != JOKER_VALUE)
+            .sorted_by(|&a, &b| a.0.cmp(&b.0))
+            .map(|f| f.1)
+            .collect_vec()
+    }
+
     fn hand_type(&self) -> HandType {
         let card_freqs = self.card_freqs();
         let n_jokers = *card_freqs.get(&JOKER_VALUE).unwrap_or(&0);
 
-        let mut freqs = self
-            .card_freqs()
-            .values()
-            .sorted()
-            .map(|f| *f)
-            .collect_vec();
+        // Collect the frequencies of non-joker cards
+        let mut freqs = self.non_joker_freqs();
+        if n_jokers == 0 {
+            debug_assert_eq!(freqs.len(), self.card_freqs().len());
+        } else if n_jokers == 1 {
+            debug_assert_eq!(freqs.len(), self.card_freqs().len() - 1);
+        }
 
+        println!("Hand: {:?} - freqs is {:?}", self, freqs);
         for _ in 0..n_jokers {
-            // Add a joker to the most frequent card's count, and remove the least frequent card.
-            let last_freq_idx = freqs.len() - 1;
-            freqs[last_freq_idx] += 1;
-
-            if freqs[0] == 1 {
-                freqs.remove(0);
+            if freqs.len() == 0 {
+                // hand is only jokers
+                freqs.push(1);
             } else {
-                freqs[0] -= 1;
+                // Add a joker to the most frequent non-joker card's count.
+                *freqs.last_mut().unwrap() += 1;
             }
+            println!("Processed joker - freqs is now {:?}", freqs);
         }
 
         match freqs[..] {
@@ -125,4 +135,75 @@ pub fn run() {
         .sum();
 
     println!("{:?}", total_winnings);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_card_freqs() {
+        for (hand_values, freqs) in [
+            (vec![0, 0, 0, 0, 0], HashMap::from([(0, 5)])),
+            (vec![0, 0, 0, 0, 1], HashMap::from([(0, 4), (1, 1)])),
+            (vec![0, 0, 0, 1, 1], HashMap::from([(0, 3), (1, 2)])),
+            (vec![0, 0, 0, 1, 2], HashMap::from([(0, 3), (1, 1), (2, 1)])),
+        ] {
+            let hand = Hand {
+                hand_values,
+                bid: 1,
+            };
+            assert_eq!(
+                hand.card_freqs(),
+                freqs,
+                "hand={:?}, expected freqs={:?}",
+                hand,
+                freqs
+            );
+        }
+    }
+
+    #[test]
+    fn test_non_joker_freqs() {
+        for (hand_values, freqs) in [
+            (vec![0, 0, 0, 0, 0], vec![]),
+            (vec![0, 0, 0, 0, 1], vec![1]),
+            (vec![0, 0, 0, 1, 1], vec![2]),
+            (vec![0, 0, 0, 1, 2], vec![1, 1]),
+        ] {
+            let hand = Hand {
+                hand_values,
+                bid: 1,
+            };
+            assert_eq!(
+                hand.non_joker_freqs(),
+                freqs,
+                "hand={:?}, expected freqs={:?}",
+                hand,
+                freqs
+            );
+        }
+    }
+
+    #[test]
+    fn test_hand_type() {
+        for (hand_values, hand_type) in [
+            (vec![0, 0, 0, 0, 0], HandType::FiveOfKind),
+            (vec![0, 0, 0, 0, 1], HandType::FiveOfKind),
+            (vec![0, 0, 0, 1, 1], HandType::FiveOfKind),
+            (vec![0, 0, 0, 1, 2], HandType::FourOfKind),
+        ] {
+            let hand = Hand {
+                hand_values,
+                bid: 1,
+            };
+            assert_eq!(
+                hand.hand_type(),
+                hand_type,
+                "hand={:?}, expected type={:?}",
+                hand,
+                hand_type
+            );
+        }
+    }
 }
