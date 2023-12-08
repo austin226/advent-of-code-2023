@@ -66,8 +66,8 @@ impl Hand {
         self.card_freqs()
             .into_iter()
             .filter(|f| f.0 != JOKER_VALUE)
-            .sorted_by(|&a, &b| a.0.cmp(&b.0))
             .map(|f| f.1)
+            .sorted()
             .collect_vec()
     }
 
@@ -148,6 +148,10 @@ mod tests {
             (vec![0, 0, 0, 0, 1], HashMap::from([(0, 4), (1, 1)])),
             (vec![0, 0, 0, 1, 1], HashMap::from([(0, 3), (1, 2)])),
             (vec![0, 0, 0, 1, 2], HashMap::from([(0, 3), (1, 1), (2, 1)])),
+            (
+                vec![2, 1, 9, 2, 11],
+                HashMap::from([(2, 2), (1, 1), (9, 1), (11, 1)]),
+            ),
         ] {
             let hand = Hand {
                 hand_values,
@@ -170,6 +174,7 @@ mod tests {
             (vec![0, 0, 0, 0, 1], vec![1]),
             (vec![0, 0, 0, 1, 1], vec![2]),
             (vec![0, 0, 0, 1, 2], vec![1, 1]),
+            (vec![2, 1, 9, 2, 11], vec![1, 1, 1, 2]),
         ] {
             let hand = Hand {
                 hand_values,
