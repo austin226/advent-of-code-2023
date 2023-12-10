@@ -12,6 +12,51 @@ impl Tile {
     fn is_start(&self) -> bool {
         self.tile_type == TileType::Start
     }
+
+    fn neighbor_points(&self, map_width: usize, map_height: usize) -> Vec<Point> {
+        use TileType::*;
+        let dxs = match self.tile_type {
+            NS => vec![0, 0],
+            EW => vec![1, -1],
+            NE => vec![0, 1],
+            NW => vec![0, -1],
+            SW => vec![0, -1],
+            SE => vec![0, 1],
+            _ => vec![],
+        };
+        let dys = match self.tile_type {
+            NS => vec![-1, 1],
+            EW => vec![0, 0],
+            NE => vec![-1, 0],
+            NW => vec![-1, 0],
+            SW => vec![1, 0],
+            SE => vec![1, 0],
+            _ => vec![],
+        };
+        debug_assert_eq!(dxs.len(), dys.len());
+
+        let mut res = Vec::new();
+        for i in 0..dxs.len() {
+            let dx = dxs[i];
+            let dy = dys[i];
+            if let Some(neighbor_point) = self.point_in_dir(dy, dx, map_width, map_height) {
+                res.push(neighbor_point);
+            }
+        }
+        res
+    }
+
+    fn point_in_dir(&self, dy: i32, dx: i32, map_width: usize, map_height: usize) -> Option<Point> {
+        let x = self.point.x as i32 + dx;
+        let y = self.point.y as i32 + dy;
+        if (0..map_width as i32).contains(&x) && (0..map_height as i32).contains(&y) {
+            return Some(Point {
+                x: x as usize,
+                y: y as usize,
+            });
+        }
+        return None;
+    }
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -69,6 +114,7 @@ pub fn run() {
                 tile_type: TileType::parse(row_str.as_bytes()[x] as char),
                 point: (Point { x: y, y: x }),
             };
+            // TODO - re-assign starting tile type based on its neighbors
             if tile.is_start() {
                 starting_tile = Some(tile);
             }
