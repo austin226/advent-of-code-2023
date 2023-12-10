@@ -1,4 +1,5 @@
 use queues::*;
+use std::collections::{HashMap, HashSet};
 
 use crate::common::get_input;
 
@@ -108,28 +109,36 @@ impl TileType {
     fn is_start(&self) -> bool {
         *self == TileType::Start
     }
+
+    fn is_empty(&self) -> bool {
+        *self == TileType::Empty
+    }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 struct Point {
     x: usize,
     y: usize,
+}
+
+fn get_tile(tiles: &Vec<Vec<Tile>>, point: &Point) -> Tile {
+    tiles[point.y][point.x]
 }
 
 pub fn run() {
     // Input is a square of pipe symbols
     let input = get_input("src/day10/input0.txt");
 
-    let width = input[0].len();
-    let height = input.len();
+    let map_width = input[0].len();
+    let map_height = input.len();
 
     // Parse tiles and get the starting point
     let mut tiles: Vec<Vec<Tile>> = Vec::new();
     let mut starting_tile_point: Option<Point> = None;
-    for y in 0..width {
+    for y in 0..map_width {
         let row_str = &input[y];
         let mut row = Vec::new();
-        for x in 0..height {
+        for x in 0..map_height {
             let mut is_start = false;
             let tile_type = TileType::parse(row_str.as_bytes()[x] as char);
             let tile = Tile {
@@ -147,22 +156,51 @@ pub fn run() {
 
     // Determine starting tile directions based on neighboring points
     let starting_tile_point = starting_tile_point.unwrap();
-    let mut starting_tile = tiles[starting_tile_point.y][starting_tile_point.x];
-    let starting_neighbors_nesw = [(0, -1), (1, 0), (0, 1), (-1, 0)]
-        .map(|(dx, dy)| starting_tile.point_in_dir(dy, dx, width, height))
-        .map(|p| {
-            p.is_some() && {
-                let p = p.unwrap();
-                let neighbor_tile_row = &tiles[p.y];
-                let neighbor_tile = neighbor_tile_row[p.x];
-                neighbor_tile.tile_type != TileType::Empty
-            }
-        });
-    starting_tile.resolve_starting_tile(starting_neighbors_nesw);
-    tiles[starting_tile_point.y][starting_tile_point.x] = starting_tile;
+    {
+        let mut starting_tile = get_tile(&tiles, &starting_tile_point);
+        let starting_neighbors_nesw = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+            .map(|(dx, dy)| starting_tile.point_in_dir(dy, dx, map_width, map_height))
+            .map(|p| p.is_some() && { !get_tile(&tiles, &p.unwrap()).tile_type.is_empty() });
+        starting_tile.resolve_starting_tile(starting_neighbors_nesw);
+        tiles[starting_tile_point.y][starting_tile_point.x] = starting_tile;
+    }
+
+    // Make tiles immutable
+    let tiles = tiles;
 
     // Do a BFS to determine how far the furthest connected tile is from the start
-    let mut tiles_q: Queue<Tile> = queue![];
+    {
+        let mut visited = HashSet::<Point>::new();
 
-    println!("{:?}", tiles);
+        // queue point and distance from start
+        let mut q: Queue<(Point, u32)> = queue![];
+        let mut distances = HashMap::<Point, u32>::new();
+        let _ = q.add((starting_tile_point, 0));
+        while q.size() > 0 {
+            let (v_p, dist_from_start) = q.remove().unwrap();
+            if let Some(old_dist) = distances.get(&v_p) {
+                distances.insert(v_p, std::cmp::min(*old_dist, dist_from_start));
+            } else {
+                distances.insert(v_p, dist_from_start);
+            }
+            // println!("Visit {:?}", v_p);
+            visited.insert(v_p);
+            let v = get_tile(&tiles, &v_p);
+            for u_p in v.neighbor_points(map_width, map_height) {
+                let u = get_tile(&tiles, &u_p);
+                if !u.tile_type.is_empty() {
+                    // u is a pipe. Let's visit it if not yet visited.
+                    // println!("Neighbor of {:?} at {:?}", v_p, u_p);
+                    // println!("Visited is {:?}", visited);
+                    if !visited.contains(&u_p) {
+                        // println!("Add {:?} to q", u_p);
+                        let _ = q.add((u_p, dist_from_start + 1));
+                    }
+                }
+            }
+        }
+        println!("{:?}", distances.into_values().max().unwrap());
+    }
+
+    // println!("{:?}", tiles);
 }
