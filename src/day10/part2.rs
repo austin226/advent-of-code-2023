@@ -125,7 +125,7 @@ impl fmt::Display for TileType {
         use TileType::*;
         let d = match self {
             NS => "│",
-            NE => "┖",
+            NE => "└",
             NW => "┘",
             EW => "─",
             SW => "┐",
