@@ -183,7 +183,7 @@ fn print_grid(tiles: &Vec<Vec<Tile>>) {
 
 pub fn run() {
     // Input is a square of pipe symbols
-    let input = get_input("src/day10/input6.txt");
+    let input = get_input("src/day10/input7.txt");
 
     let map_width = input[0].len();
     let map_height = input.len();
@@ -256,7 +256,7 @@ pub fn run() {
                 }
             }
         }
-        println!("{:?}", distances.into_values().max().unwrap());
+        // println!("{:?}", distances.into_values().max().unwrap());
     }
 
     // println!("{:?}", tiles);
