@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use queues::*;
 
 use crate::common::get_input;
 
@@ -162,7 +162,7 @@ pub fn run() {
     tiles[starting_tile_point.y][starting_tile_point.x] = starting_tile;
 
     // Do a BFS to determine how far the furthest connected tile is from the start
-    
+    let mut tiles_q: Queue<Tile> = queue![];
 
     println!("{:?}", tiles);
 }
