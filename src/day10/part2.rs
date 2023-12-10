@@ -1,3 +1,4 @@
+use core::fmt;
 use queues::*;
 use std::collections::{HashMap, HashSet};
 
@@ -7,6 +8,12 @@ use crate::common::get_input;
 struct Tile {
     tile_type: TileType,
     point: Point,
+}
+
+impl fmt::Display for Tile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.tile_type)
+    }
 }
 
 impl Tile {
@@ -105,6 +112,23 @@ enum TileType {
     SE,
 }
 
+impl fmt::Display for TileType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use TileType::*;
+        let d = match self {
+            NS => "│",
+            NE => "┖",
+            NW => "┘",
+            EW => "─",
+            SW => "┐",
+            SE => "┌",
+            Start => "🐿️",
+            _ => "░",
+        };
+        write!(f, "{}", d)
+    }
+}
+
 impl TileType {
     fn parse(c: char) -> Self {
         use TileType::*;
@@ -142,9 +166,18 @@ fn get_tile(tiles: &Vec<Vec<Tile>>, point: &Point) -> Tile {
     tiles[point.y][point.x]
 }
 
+fn print_grid(tiles: &Vec<Vec<Tile>>) {
+    for row in tiles.iter() {
+        for tile in row.iter() {
+            print!("{}", tile);
+        }
+        println!();
+    }
+}
+
 pub fn run() {
     // Input is a square of pipe symbols
-    let input = get_input("src/day10/input_full.txt");
+    let input = get_input("src/day10/input4.txt");
 
     let map_width = input[0].len();
     let map_height = input.len();
@@ -152,10 +185,10 @@ pub fn run() {
     // Parse tiles and get the starting point
     let mut tiles: Vec<Vec<Tile>> = Vec::new();
     let mut starting_tile_point: Option<Point> = None;
-    for y in 0..map_width {
+    for y in 0..map_height {
         let row_str = &input[y];
         let mut row = Vec::new();
-        for x in 0..map_height {
+        for x in 0..map_width {
             let tile_type = TileType::parse(row_str.as_bytes()[x] as char);
             let tile = Tile {
                 tile_type,
@@ -221,4 +254,5 @@ pub fn run() {
     }
 
     // println!("{:?}", tiles);
+    print_grid(&tiles);
 }
