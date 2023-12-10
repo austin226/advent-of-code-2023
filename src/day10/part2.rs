@@ -185,7 +185,7 @@ fn print_grid(tiles: &Vec<Vec<Tile>>) {
 
 pub fn run() {
     // Input is a square of pipe symbols
-    let input = get_input("src/day10/input4.txt");
+    let input = get_input("src/day10/input6.txt");
 
     let map_width = input[0].len();
     let map_height = input.len();
@@ -225,9 +225,6 @@ pub fn run() {
         tiles[starting_tile_point.y][starting_tile_point.x] = starting_tile;
     }
 
-    // Make tiles immutable
-    let tiles = tiles;
-
     // Do a BFS to determine how far the furthest connected tile is from the start
     {
         let mut visited = HashSet::<Point>::new();
@@ -238,6 +235,7 @@ pub fn run() {
         let _ = q.add((starting_tile_point, 0));
         while q.size() > 0 {
             let (v_p, dist_from_start) = q.remove().unwrap();
+            tiles[v_p.y][v_p.x].is_in_loop = true;
             if let Some(old_dist) = distances.get(&v_p) {
                 distances.insert(v_p, std::cmp::min(*old_dist, dist_from_start));
             } else {
@@ -254,6 +252,7 @@ pub fn run() {
                     // println!("Visited is {:?}", visited);
                     if !visited.contains(&u_p) {
                         // println!("Add {:?} to q", u_p);
+                        // Mark the tile as part of the loop
                         let _ = q.add((u_p, dist_from_start + 1));
                     }
                 }
