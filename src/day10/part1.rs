@@ -55,19 +55,36 @@ impl Tile {
         return None;
     }
 
-    fn resolve_starting_tile(&mut self, neighbors_nesw: [bool; 4]) {
+    fn resolve_starting_tile(&mut self, neighbors_nesw: [TileType; 4]) {
         if !self.tile_type.is_start() {
             panic!("resolve_starting_tile called on non-starting tile");
         }
 
         use TileType::*;
-        let new_type = match neighbors_nesw {
-            [true, true, false, false] => NE,
-            [true, false, true, false] => NS,
-            [true, false, false, true] => NW,
-            [false, true, true, false] => SE,
-            [false, true, false, true] => EW,
-            [false, false, true, true] => SW,
+        let connected_n = match neighbors_nesw[0] {
+            NS | SW | SE => true,
+            _ => false,
+        };
+        let connected_e = match neighbors_nesw[1] {
+            EW | NW | SW => true,
+            _ => false,
+        };
+        let connected_s = match neighbors_nesw[2] {
+            NS | NW | NE => true,
+            _ => false,
+        };
+        let connected_w = match neighbors_nesw[3] {
+            EW | NE | SE => true,
+            _ => false,
+        };
+
+        let new_type = match (connected_n, connected_e, connected_s, connected_w) {
+            (true, true, false, false) => NE,
+            (true, false, true, false) => NS,
+            (true, false, false, true) => NW,
+            (false, true, true, false) => SE,
+            (false, true, false, true) => EW,
+            (false, false, true, true) => SW,
             _ => {
                 panic!("Invalid neighbors_nesw: {:?}", neighbors_nesw);
             }
@@ -127,7 +144,7 @@ fn get_tile(tiles: &Vec<Vec<Tile>>, point: &Point) -> Tile {
 
 pub fn run() {
     // Input is a square of pipe symbols
-    let input = get_input("src/day10/input0.txt");
+    let input = get_input("src/day10/input1.txt");
 
     let map_width = input[0].len();
     let map_height = input.len();
@@ -139,7 +156,6 @@ pub fn run() {
         let row_str = &input[y];
         let mut row = Vec::new();
         for x in 0..map_height {
-            let mut is_start = false;
             let tile_type = TileType::parse(row_str.as_bytes()[x] as char);
             let tile = Tile {
                 tile_type,
@@ -147,7 +163,6 @@ pub fn run() {
             };
             if tile_type.is_start() {
                 starting_tile_point = Some(tile.point);
-                is_start = true;
             }
             row.push(tile);
         }
@@ -160,7 +175,10 @@ pub fn run() {
         let mut starting_tile = get_tile(&tiles, &starting_tile_point);
         let starting_neighbors_nesw = [(0, -1), (1, 0), (0, 1), (-1, 0)]
             .map(|(dx, dy)| starting_tile.point_in_dir(dy, dx, map_width, map_height))
-            .map(|p| p.is_some() && { !get_tile(&tiles, &p.unwrap()).tile_type.is_empty() });
+            .map(|p| match p {
+                Some(p) => get_tile(&tiles, &p).tile_type,
+                None => TileType::Empty,
+            });
         starting_tile.resolve_starting_tile(starting_neighbors_nesw);
         tiles[starting_tile_point.y][starting_tile_point.x] = starting_tile;
     }
