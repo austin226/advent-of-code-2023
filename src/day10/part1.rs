@@ -9,10 +9,6 @@ struct Tile {
 }
 
 impl Tile {
-    fn is_start(&self) -> bool {
-        self.tile_type == TileType::Start
-    }
-
     fn neighbor_points(&self, map_width: usize, map_height: usize) -> Vec<Point> {
         use TileType::*;
         let dxs = match self.tile_type {
@@ -57,6 +53,26 @@ impl Tile {
         }
         return None;
     }
+
+    fn resolve_starting_tile(&mut self, neighbors_nesw: [bool; 4]) {
+        if !self.tile_type.is_start() {
+            panic!("resolve_starting_tile called on non-starting tile");
+        }
+
+        use TileType::*;
+        let new_type = match neighbors_nesw {
+            [true, true, false, false] => NE,
+            [true, false, true, false] => NS,
+            [true, false, false, true] => NW,
+            [false, true, true, false] => SE,
+            [false, true, false, true] => EW,
+            [false, false, true, true] => SW,
+            _ => {
+                panic!("Invalid neighbors_nesw: {:?}", neighbors_nesw);
+            }
+        };
+        self.tile_type = new_type;
+    }
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -88,6 +104,10 @@ impl TileType {
             }
         }
     }
+
+    fn is_start(&self) -> bool {
+        *self == TileType::Start
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -105,24 +125,41 @@ pub fn run() {
 
     // Parse tiles and get the starting point
     let mut tiles: Vec<Vec<Tile>> = Vec::new();
-    let mut starting_tile: Option<Tile> = None;
+    let mut starting_tile_point: Option<Point> = None;
     for y in 0..width {
         let row_str = &input[y];
         let mut row = Vec::new();
         for x in 0..height {
+            let mut is_start = false;
+            let tile_type = TileType::parse(row_str.as_bytes()[x] as char);
             let tile = Tile {
-                tile_type: TileType::parse(row_str.as_bytes()[x] as char),
-                point: (Point { x: y, y: x }),
+                tile_type,
+                point: (Point { x, y }),
             };
-            // TODO - re-assign starting tile type based on its neighbors
-            if tile.is_start() {
-                starting_tile = Some(tile);
+            if tile_type.is_start() {
+                starting_tile_point = Some(tile.point);
+                is_start = true;
             }
             row.push(tile);
         }
         tiles.push(row);
     }
 
-    let starting_tile = starting_tile.unwrap();
+    // Determine starting tile directions based on neighboring points
+    let starting_tile_point = starting_tile_point.unwrap();
+    let mut starting_tile = tiles[starting_tile_point.y][starting_tile_point.x];
+    let starting_neighbors_nesw = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+        .map(|(dx, dy)| starting_tile.point_in_dir(dy, dx, width, height))
+        .map(|p| {
+            p.is_some() && {
+                let p = p.unwrap();
+                let neighbor_tile_row = &tiles[p.y];
+                let neighbor_tile = neighbor_tile_row[p.x];
+                neighbor_tile.tile_type != TileType::Empty
+            }
+        });
+    starting_tile.resolve_starting_tile(starting_neighbors_nesw);
+    tiles[starting_tile_point.y][starting_tile_point.x] = starting_tile;
+
     println!("{:?}", tiles);
 }
