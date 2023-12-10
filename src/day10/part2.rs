@@ -9,14 +9,12 @@ use crate::common::get_input;
 struct Tile {
     tile_type: TileType,
     point: Point,
-    is_in_loop: bool,
+    is_loop: bool,
 }
 
 impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.tile_type.is_empty() {
-            write!(f, "{}", format!("{}", self.tile_type).cyan())
-        } else if self.is_in_loop {
+        if self.is_loop {
             write!(f, "{}", format!("{}", self.tile_type).green())
         } else {
             write!(f, "{}", format!("{}", self.tile_type).yellow())
@@ -201,7 +199,7 @@ pub fn run() {
             let tile = Tile {
                 tile_type,
                 point: (Point { x, y }),
-                is_in_loop: false,
+                is_loop: false,
             };
             if tile_type.is_start() {
                 starting_tile_point = Some(tile.point);
@@ -235,7 +233,7 @@ pub fn run() {
         let _ = q.add((starting_tile_point, 0));
         while q.size() > 0 {
             let (v_p, dist_from_start) = q.remove().unwrap();
-            tiles[v_p.y][v_p.x].is_in_loop = true;
+            tiles[v_p.y][v_p.x].is_loop = true;
             if let Some(old_dist) = distances.get(&v_p) {
                 distances.insert(v_p, std::cmp::min(*old_dist, dist_from_start));
             } else {
