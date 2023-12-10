@@ -144,7 +144,7 @@ fn get_tile(tiles: &Vec<Vec<Tile>>, point: &Point) -> Tile {
 
 pub fn run() {
     // Input is a square of pipe symbols
-    let input = get_input("src/day10/input1.txt");
+    let input = get_input("src/day10/input_full.txt");
 
     let map_width = input[0].len();
     let map_height = input.len();
