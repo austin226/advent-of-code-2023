@@ -161,5 +161,8 @@ pub fn run() {
     starting_tile.resolve_starting_tile(starting_neighbors_nesw);
     tiles[starting_tile_point.y][starting_tile_point.x] = starting_tile;
 
+    // Do a BFS to determine how far the furthest connected tile is from the start
+    
+
     println!("{:?}", tiles);
 }
