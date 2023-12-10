@@ -1,3 +1,4 @@
+use colored::Colorize;
 use core::fmt;
 use queues::*;
 use std::collections::{HashMap, HashSet};
@@ -8,11 +9,18 @@ use crate::common::get_input;
 struct Tile {
     tile_type: TileType,
     point: Point,
+    is_in_loop: bool,
 }
 
 impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.tile_type)
+        if self.tile_type.is_empty() {
+            write!(f, "{}", format!("{}", self.tile_type).cyan())
+        } else if self.is_in_loop {
+            write!(f, "{}", format!("{}", self.tile_type).green())
+        } else {
+            write!(f, "{}", format!("{}", self.tile_type).yellow())
+        }
     }
 }
 
@@ -193,6 +201,7 @@ pub fn run() {
             let tile = Tile {
                 tile_type,
                 point: (Point { x, y }),
+                is_in_loop: false,
             };
             if tile_type.is_start() {
                 starting_tile_point = Some(tile.point);
