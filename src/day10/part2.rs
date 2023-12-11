@@ -18,6 +18,8 @@ struct Tile {
     point: Point,
     is_loop: bool,
     is_occupied: bool,
+    is_outside: bool,
+    is_inside: bool,
 }
 
 impl fmt::Display for Tile {
@@ -26,6 +28,10 @@ impl fmt::Display for Tile {
             write!(f, "{}", "☺")
         } else if self.is_loop {
             write!(f, "{}", format!("{}", self.tile_type).green())
+        } else if self.is_inside {
+            write!(f, "{}", format!("{}", self.tile_type).red())
+        } else if self.is_outside {
+            write!(f, "{}", format!("{}", self.tile_type).blue())
         } else {
             write!(f, "{}", format!("{}", self.tile_type).yellow())
         }
@@ -39,6 +45,8 @@ impl Tile {
             point: Point { x, y },
             is_loop: false,
             is_occupied: false,
+            is_outside: false,
+            is_inside: false,
         }
     }
 
@@ -217,8 +225,12 @@ fn next_loop_tile(
         if prev_point == neighbors_in_loop[0] {
             return *neighbors_in_loop[1];
         }
+        return *neighbors_in_loop[0];
     }
-    return *neighbors_in_loop[0];
+
+    // TODO
+    // Determine clockwise direction
+    return *neighbors_in_loop[1];
 }
 
 fn print_grid<W>(tiles: &Vec<Vec<Tile>>, terminal: &mut Terminal<CrosstermBackend<W>>)
@@ -231,6 +243,32 @@ where
             print!("{}", tile);
         }
         println!();
+    }
+}
+
+fn mark_tiles_outside(
+    tiles: &mut Vec<Vec<Tile>>,
+    outside_tile_point: &Point,
+    map_width: usize,
+    map_height: usize,
+) {
+    // Do a BFS
+    let mut visited = HashSet::<Point>::new();
+
+    // queue point
+    let mut q: Queue<Point> = queue![];
+    let _ = q.add(*outside_tile_point);
+    while q.size() > 0 {
+        let v_p = q.remove().unwrap();
+        tiles[v_p.y][v_p.x].is_outside = true;
+        visited.insert(v_p);
+        let v = get_tile(&tiles, &v_p);
+        for u_p in v.neighbor_points(map_width, map_height) {
+            let u = get_tile(&tiles, &u_p);
+            if !u.is_loop && !visited.contains(&u_p) {
+                let _ = q.add(u_p);
+            }
+        }
     }
 }
 
@@ -273,9 +311,8 @@ pub fn run() {
                 Some(p) => get_tile(&tiles, &p).tile_type,
                 None => TileType::Empty,
             });
-        let mut starting_tile = get_tile_mut(&mut tiles, &starting_tile_point);
+        let starting_tile = get_tile_mut(&mut tiles, &starting_tile_point);
         starting_tile.resolve_starting_tile(starting_neighbors_nesw);
-        // tiles[starting_tile_point.y][starting_tile_point.x] = starting_tile;
     }
 
     // Do a BFS to determine how far the furthest connected tile is from the start
@@ -325,24 +362,29 @@ pub fn run() {
         }
 
         // Starting at the left hand point, if it's not part of the loop, mark it and all connected points as outside.
-        let facing_dir = (
-            (next_point.y as i32 - current_point.y as i32),
-            (next_point.x as i32 - current_point.x as i32),
-        );
-        let left_hand_dir = match facing_dir {
-            // dy, dx
-            (-1, 0) => (0, -1),
-            (0, 1) => (1, 0),
-            (1, 0) => (0, -1),
-            (0, -1) => (-1, 0),
-            _ => panic!("Bad facing_dir: {:?}", facing_dir),
-        };
-        let left_hand_point = get_tile(&tiles, &current_point).point_in_dir(
-            left_hand_dir.0,
-            left_hand_dir.1,
-            map_width,
-            map_height,
-        );
+        {
+            let facing_dir = (
+                (next_point.y as i32 - current_point.y as i32),
+                (next_point.x as i32 - current_point.x as i32),
+            );
+            let left_hand_dir = match facing_dir {
+                // dy, dx
+                (-1, 0) => (0, -1),
+                (0, 1) => (1, 0),
+                (1, 0) => (0, -1),
+                (0, -1) => (-1, 0),
+                _ => panic!("Bad facing_dir: {:?}", facing_dir),
+            };
+            let left_hand_point = get_tile(&tiles, &current_point).point_in_dir(
+                left_hand_dir.0,
+                left_hand_dir.1,
+                map_width,
+                map_height,
+            );
+            if let Some(left_hand_point) = left_hand_point {
+                mark_tiles_outside(&mut tiles, &left_hand_point, map_width, map_height);
+            }
+        }
 
         // Update current location
         prev_point = Some(current_point);
