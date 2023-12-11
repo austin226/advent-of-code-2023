@@ -1,11 +1,14 @@
 use colored::Colorize;
 use core::fmt;
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use itertools::Itertools;
 use queues::*;
+use std::io;
 use std::{
     collections::{HashMap, HashSet},
     time::Duration,
 };
+use tui::{backend::CrosstermBackend, Terminal};
 
 use crate::common::get_input;
 
@@ -20,7 +23,7 @@ struct Tile {
 impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_occupied {
-            write!(f, "{}", "🐿️")
+            write!(f, "{}", "☺")
         } else if self.is_loop {
             write!(f, "{}", format!("{}", self.tile_type).green())
         } else {
@@ -184,8 +187,12 @@ struct Point {
     y: usize,
 }
 
-fn get_tile(tiles: &Vec<Vec<Tile>>, point: &Point) -> Tile {
-    tiles[point.y][point.x]
+fn get_tile<'a>(tiles: &'a Vec<Vec<Tile>>, point: &Point) -> &'a Tile {
+    &tiles[point.y][point.x]
+}
+
+fn get_tile_mut<'a>(tiles: &'a mut Vec<Vec<Tile>>, point: &Point) -> &'a mut Tile {
+    &mut tiles[point.y][point.x]
 }
 
 /// Returns the point where the next tile in the loop is located.
@@ -214,7 +221,11 @@ fn next_loop_tile(
     return *neighbors_in_loop[0];
 }
 
-fn print_grid(tiles: &Vec<Vec<Tile>>) {
+fn print_grid<W>(tiles: &Vec<Vec<Tile>>, terminal: &mut Terminal<CrosstermBackend<W>>)
+where
+    W: std::io::Write,
+{
+    let _ = terminal.clear();
     for row in tiles.iter() {
         for tile in row.iter() {
             print!("{}", tile);
@@ -224,6 +235,11 @@ fn print_grid(tiles: &Vec<Vec<Tile>>) {
 }
 
 pub fn run() {
+    // Set up terminal
+    let stdout = io::stdout();
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend).unwrap();
+
     // Input is a square of pipe symbols
     let input = get_input("src/day10/input7.txt");
 
@@ -250,15 +266,16 @@ pub fn run() {
     // Determine starting tile directions based on neighboring points
     let starting_tile_point = starting_tile_point.unwrap();
     {
-        let mut starting_tile = get_tile(&tiles, &starting_tile_point);
+        let starting_tile = get_tile(&tiles, &starting_tile_point);
         let starting_neighbors_nesw = [(0, -1), (1, 0), (0, 1), (-1, 0)]
             .map(|(dx, dy)| starting_tile.point_in_dir(dy, dx, map_width, map_height))
             .map(|p| match p {
                 Some(p) => get_tile(&tiles, &p).tile_type,
                 None => TileType::Empty,
             });
+        let mut starting_tile = get_tile_mut(&mut tiles, &starting_tile_point);
         starting_tile.resolve_starting_tile(starting_neighbors_nesw);
-        tiles[starting_tile_point.y][starting_tile_point.x] = starting_tile;
+        // tiles[starting_tile_point.y][starting_tile_point.x] = starting_tile;
     }
 
     // Do a BFS to determine how far the furthest connected tile is from the start
@@ -298,7 +315,6 @@ pub fn run() {
     }
 
     // Print the grid
-    print_grid(&tiles);
 
     // Start at the starting point
     let mut current_point = starting_tile_point;
@@ -311,14 +327,15 @@ pub fn run() {
             break;
         }
 
-        get_tile(&tiles, &current_point).is_occupied = false;
-        get_tile(&tiles, &next_point).is_occupied = true;
+        get_tile_mut(&mut tiles, &next_point).is_occupied = true;
         prev_point = Some(current_point);
         current_point = next_point;
+        get_tile_mut(&mut tiles, &current_point).is_occupied = true;
+        print_grid(&tiles, &mut terminal);
         println!("Walk to {:?}", next_point);
-        // std::thread::sleep(Duration::from_millis(200));
+
+        std::thread::sleep(Duration::from_millis(200));
     }
 
-    print_grid(&tiles);
     // println!("{:?}", tiles);
 }
