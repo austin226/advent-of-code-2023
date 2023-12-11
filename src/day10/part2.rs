@@ -1,7 +1,11 @@
 use colored::Colorize;
 use core::fmt;
+use itertools::Itertools;
 use queues::*;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Duration,
+};
 
 use crate::common::get_input;
 
@@ -10,11 +14,14 @@ struct Tile {
     tile_type: TileType,
     point: Point,
     is_loop: bool,
+    is_occupied: bool,
 }
 
 impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_loop {
+        if self.is_occupied {
+            write!(f, "{}", "🐿️")
+        } else if self.is_loop {
             write!(f, "{}", format!("{}", self.tile_type).green())
         } else {
             write!(f, "{}", format!("{}", self.tile_type).yellow())
@@ -23,6 +30,15 @@ impl fmt::Display for Tile {
 }
 
 impl Tile {
+    fn new(tile_type: TileType, x: usize, y: usize) -> Self {
+        Self {
+            tile_type,
+            point: Point { x, y },
+            is_loop: false,
+            is_occupied: false,
+        }
+    }
+
     fn neighbor_points(&self, map_width: usize, map_height: usize) -> Vec<Point> {
         use TileType::*;
         let dxs = match self.tile_type {
@@ -172,6 +188,32 @@ fn get_tile(tiles: &Vec<Vec<Tile>>, point: &Point) -> Tile {
     tiles[point.y][point.x]
 }
 
+/// Returns the point where the next tile in the loop is located.
+fn next_loop_tile(
+    tiles: &Vec<Vec<Tile>>,
+    point: &Point,
+    prev_point: &Option<Point>,
+    map_width: usize,
+    map_height: usize,
+) -> Point {
+    let current_tile = get_tile(tiles, point);
+    assert!(current_tile.is_loop, "Tile {:?} not in loop!", point);
+
+    let neighbor_points = current_tile.neighbor_points(map_width, map_height);
+    let neighbors_in_loop = neighbor_points
+        .iter()
+        .filter(|n| get_tile(tiles, n).is_loop)
+        .collect_vec();
+    assert_eq!(2, neighbors_in_loop.len(), "Should be 2 neighbors in loop");
+
+    if let Some(prev_point) = prev_point {
+        if prev_point == neighbors_in_loop[0] {
+            return *neighbors_in_loop[1];
+        }
+    }
+    return *neighbors_in_loop[0];
+}
+
 fn print_grid(tiles: &Vec<Vec<Tile>>) {
     for row in tiles.iter() {
         for tile in row.iter() {
@@ -196,11 +238,7 @@ pub fn run() {
         let mut row = Vec::new();
         for x in 0..map_width {
             let tile_type = TileType::parse(row_str.as_bytes()[x] as char);
-            let tile = Tile {
-                tile_type,
-                point: (Point { x, y }),
-                is_loop: false,
-            };
+            let tile = Tile::new(tile_type, x, y);
             if tile_type.is_start() {
                 starting_tile_point = Some(tile.point);
             }
@@ -259,6 +297,28 @@ pub fn run() {
         // println!("{:?}", distances.into_values().max().unwrap());
     }
 
-    // println!("{:?}", tiles);
+    // Print the grid
     print_grid(&tiles);
+
+    // Start at the starting point
+    let mut current_point = starting_tile_point;
+    let mut prev_point: Option<Point> = None;
+    loop {
+        // Walk the loop clockwise
+        let current_tile = get_tile(&tiles, &current_point);
+        let next_point = next_loop_tile(&tiles, &current_point, &prev_point, map_width, map_height);
+        if next_point == starting_tile_point {
+            break;
+        }
+
+        get_tile(&tiles, &current_point).is_occupied = false;
+        get_tile(&tiles, &next_point).is_occupied = true;
+        prev_point = Some(current_point);
+        current_point = next_point;
+        println!("Walk to {:?}", next_point);
+        // std::thread::sleep(Duration::from_millis(200));
+    }
+
+    print_grid(&tiles);
+    // println!("{:?}", tiles);
 }
