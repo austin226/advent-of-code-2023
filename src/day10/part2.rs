@@ -314,25 +314,43 @@ pub fn run() {
         // println!("{:?}", distances.into_values().max().unwrap());
     }
 
-    // Print the grid
-
     // Start at the starting point
     let mut current_point = starting_tile_point;
     let mut prev_point: Option<Point> = None;
     loop {
         // Walk the loop clockwise
-        let current_tile = get_tile(&tiles, &current_point);
         let next_point = next_loop_tile(&tiles, &current_point, &prev_point, map_width, map_height);
         if next_point == starting_tile_point {
             break;
         }
 
-        get_tile_mut(&mut tiles, &next_point).is_occupied = true;
+        // Starting at the left hand point, if it's not part of the loop, mark it and all connected points as outside.
+        let facing_dir = (
+            (next_point.y as i32 - current_point.y as i32),
+            (next_point.x as i32 - current_point.x as i32),
+        );
+        let left_hand_dir = match facing_dir {
+            // dy, dx
+            (-1, 0) => (0, -1),
+            (0, 1) => (1, 0),
+            (1, 0) => (0, -1),
+            (0, -1) => (-1, 0),
+            _ => panic!("Bad facing_dir: {:?}", facing_dir),
+        };
+        let left_hand_point = get_tile(&tiles, &current_point).point_in_dir(
+            left_hand_dir.0,
+            left_hand_dir.1,
+            map_width,
+            map_height,
+        );
+
+        // Update current location
         prev_point = Some(current_point);
         current_point = next_point;
+
+        get_tile_mut(&mut tiles, &prev_point.unwrap()).is_occupied = false;
         get_tile_mut(&mut tiles, &current_point).is_occupied = true;
         print_grid(&tiles, &mut terminal);
-        println!("Walk to {:?}", next_point);
 
         std::thread::sleep(Duration::from_millis(200));
     }
