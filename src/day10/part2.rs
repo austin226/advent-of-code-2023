@@ -7,6 +7,7 @@ use crate::common::get_input;
 struct Tile {
     tile_type: TileType,
     point: Point,
+    in_loop: bool,
 }
 
 impl Tile {
@@ -93,7 +94,7 @@ impl Tile {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, Eq, Hash)]
 enum TileType {
     Empty,
     Start,
@@ -130,6 +131,49 @@ impl TileType {
     fn is_empty(&self) -> bool {
         *self == TileType::Empty
     }
+
+    fn to_block_segment(&self, r: usize, c: usize) -> bool {
+        use TileType::*;
+        match self {
+            NS => match (r, c) {
+                (0, 1) => true,
+                (1, 1) => true,
+                (2, 1) => true,
+                _ => false,
+            },
+            EW => match (r, c) {
+                (1, 0) => true,
+                (1, 1) => true,
+                (1, 2) => true,
+                _ => false,
+            },
+            NE => match (r, c) {
+                (0, 1) => true,
+                (1, 1) => true,
+                (1, 2) => true,
+                _ => false,
+            },
+            NW => match (r, c) {
+                (0, 1) => true,
+                (1, 1) => true,
+                (1, 0) => true,
+                _ => false,
+            },
+            SW => match (r, c) {
+                (1, 0) => true,
+                (1, 1) => true,
+                (2, 1) => true,
+                _ => false,
+            },
+            SE => match (r, c) {
+                (1, 1) => true,
+                (1, 2) => true,
+                (2, 1) => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -142,9 +186,13 @@ fn get_tile(tiles: &Vec<Vec<Tile>>, point: &Point) -> Tile {
     tiles[point.y][point.x]
 }
 
+fn get_tile_mut<'a>(tiles: &'a mut Vec<Vec<Tile>>, point: &Point) -> &'a mut Tile {
+    &mut tiles[point.y][point.x]
+}
+
 pub fn run() {
     // Input is a square of pipe symbols
-    let input = get_input("src/day10/input_full.txt");
+    let input = get_input("src/day10/input4.txt");
 
     let map_width = input[0].len();
     let map_height = input.len();
@@ -152,14 +200,15 @@ pub fn run() {
     // Parse tiles and get the starting point
     let mut tiles: Vec<Vec<Tile>> = Vec::new();
     let mut starting_tile_point: Option<Point> = None;
-    for y in 0..map_width {
+    for y in 0..map_height {
         let row_str = &input[y];
         let mut row = Vec::new();
-        for x in 0..map_height {
+        for x in 0..map_width {
             let tile_type = TileType::parse(row_str.as_bytes()[x] as char);
             let tile = Tile {
                 tile_type,
                 point: (Point { x, y }),
+                in_loop: false,
             };
             if tile_type.is_start() {
                 starting_tile_point = Some(tile.point);
@@ -172,52 +221,70 @@ pub fn run() {
     // Determine starting tile directions based on neighboring points
     let starting_tile_point = starting_tile_point.unwrap();
     {
-        let mut starting_tile = get_tile(&tiles, &starting_tile_point);
+        let starting_tile = get_tile(&tiles, &starting_tile_point);
         let starting_neighbors_nesw = [(0, -1), (1, 0), (0, 1), (-1, 0)]
             .map(|(dx, dy)| starting_tile.point_in_dir(dy, dx, map_width, map_height))
             .map(|p| match p {
                 Some(p) => get_tile(&tiles, &p).tile_type,
                 None => TileType::Empty,
             });
-        starting_tile.resolve_starting_tile(starting_neighbors_nesw);
-        tiles[starting_tile_point.y][starting_tile_point.x] = starting_tile;
+        get_tile_mut(&mut tiles, &starting_tile_point)
+            .resolve_starting_tile(starting_neighbors_nesw);
     }
 
-    // Make tiles immutable
-    let tiles = tiles;
-
-    // Do a BFS to determine how far the furthest connected tile is from the start
+    // Do a BFS to mark loop tiles
     {
         let mut visited = HashSet::<Point>::new();
 
         // queue point and distance from start
-        let mut q: Queue<(Point, u32)> = queue![];
-        let mut distances = HashMap::<Point, u32>::new();
-        let _ = q.add((starting_tile_point, 0));
+        let mut q: Queue<Point> = queue![];
+        let _ = q.add(starting_tile_point);
         while q.size() > 0 {
-            let (v_p, dist_from_start) = q.remove().unwrap();
-            if let Some(old_dist) = distances.get(&v_p) {
-                distances.insert(v_p, std::cmp::min(*old_dist, dist_from_start));
-            } else {
-                distances.insert(v_p, dist_from_start);
-            }
-            // println!("Visit {:?}", v_p);
+            let v_p = q.remove().unwrap();
             visited.insert(v_p);
-            let v = get_tile(&tiles, &v_p);
+            let v = get_tile_mut(&mut tiles, &v_p);
+            v.in_loop = true;
             for u_p in v.neighbor_points(map_width, map_height) {
                 let u = get_tile(&tiles, &u_p);
                 if !u.tile_type.is_empty() {
                     // u is a pipe. Let's visit it if not yet visited.
-                    // println!("Neighbor of {:?} at {:?}", v_p, u_p);
-                    // println!("Visited is {:?}", visited);
                     if !visited.contains(&u_p) {
-                        // println!("Add {:?} to q", u_p);
-                        let _ = q.add((u_p, dist_from_start + 1));
+                        let _ = q.add(u_p);
                     }
                 }
             }
         }
-        println!("{:?}", distances.into_values().max().unwrap());
+    }
+
+    // make a big grid
+    const BLOCK_SIZE: usize = 3;
+    let mut big_grid: Vec<Vec<bool>> =
+        vec![vec![false; map_width * BLOCK_SIZE]; map_height * BLOCK_SIZE];
+    for src_y in 0..map_height {
+        let block_start_y = src_y * BLOCK_SIZE;
+        for src_x in 0..map_width {
+            let block_start_x = src_x * BLOCK_SIZE;
+            let tile = get_tile(&tiles, &Point { x: src_x, y: src_y });
+            if tile.in_loop {
+                for block_segment_r in 0..BLOCK_SIZE {
+                    let dst_y = block_start_y + block_segment_r;
+                    for block_segment_c in 0..BLOCK_SIZE {
+                        let dst_x = block_start_x + block_segment_c;
+                        let block_segment_val = tile
+                            .tile_type
+                            .to_block_segment(block_segment_r, block_segment_c);
+                        big_grid[dst_y][dst_x] = block_segment_val;
+                    }
+                }
+            }
+        }
+    }
+
+    for r in big_grid {
+        for c in r {
+            print!("{}", if c { 1 } else { 0 });
+        }
+        println!();
     }
 
     // println!("{:?}", tiles);
