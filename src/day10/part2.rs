@@ -58,6 +58,10 @@ impl Tile {
         }
     }
 
+    fn is_inside(&self) -> bool {
+        !self.is_loop && !self.is_outside
+    }
+
     fn neighbor_points(&self, map_width: usize, map_height: usize) -> Vec<Point> {
         let dys = [-1, 0, 1, 0];
         let dxs = [0, 1, 0, -1];
@@ -407,8 +411,11 @@ pub fn run() {
             current_point, next_point, left_hand_point
         );
         if let Some(left_hand_point) = left_hand_point {
-            get_tile_mut(&mut tiles, &left_hand_point).is_current_left = true;
-            mark_tiles_outside(&mut tiles, &left_hand_point, map_width, map_height);
+            let left_tile = get_tile_mut(&mut tiles, &left_hand_point);
+            left_tile.is_current_left = true;
+            if !left_tile.is_loop {
+                mark_tiles_outside(&mut tiles, &left_hand_point, map_width, map_height);
+            }
         }
 
         get_tile_mut(&mut tiles, &current_point).is_occupied = true;
@@ -428,5 +435,18 @@ pub fn run() {
         current_point = next_point;
     }
 
-    // println!("{:?}", tiles);
+    // Count inside tiles
+    let mut inside_count = 0;
+    for y in 0..map_height {
+        for x in 0..map_width {
+            let tile = get_tile_mut(&mut tiles, &Point { x, y });
+            if tile.is_inside() {
+                tile.is_inside = true;
+                inside_count += 1;
+            }
+        }
+    }
+    print_grid(&tiles, &mut terminal);
+
+    println!("{:?}", inside_count);
 }
