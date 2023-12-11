@@ -20,18 +20,24 @@ struct Tile {
     is_occupied: bool,
     is_outside: bool,
     is_inside: bool,
+    is_current_left: bool,
+    is_current_facing: bool,
 }
 
 impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_occupied {
             write!(f, "{}", "☺")
-        } else if self.is_loop {
-            write!(f, "{}", format!("{}", self.tile_type).green())
-        } else if self.is_inside {
+        } else if self.is_current_facing {
+            write!(f, "{}", format!("{}", self.tile_type).bright_yellow())
+        } else if self.is_current_left {
             write!(f, "{}", format!("{}", self.tile_type).red())
+        } else if self.is_inside {
+            write!(f, "{}", format!("{}", self.tile_type).purple())
         } else if self.is_outside {
             write!(f, "{}", format!("{}", self.tile_type).blue())
+        } else if self.is_loop {
+            write!(f, "{}", format!("{}", self.tile_type).green())
         } else {
             write!(f, "{}", format!("{}", self.tile_type).yellow())
         }
@@ -47,10 +53,26 @@ impl Tile {
             is_occupied: false,
             is_outside: false,
             is_inside: false,
+            is_current_left: false,
+            is_current_facing: false,
         }
     }
 
     fn neighbor_points(&self, map_width: usize, map_height: usize) -> Vec<Point> {
+        let dys = [-1, 0, 1, 0];
+        let dxs = [0, 1, 0, -1];
+        let mut res = Vec::new();
+        for i in 0..dxs.len() {
+            let dx = dxs[i];
+            let dy = dys[i];
+            if let Some(neighbor_point) = self.point_in_dir(dy, dx, map_width, map_height) {
+                res.push(neighbor_point);
+            }
+        }
+        res
+    }
+
+    fn neighbor_pipe_points(&self, map_width: usize, map_height: usize) -> Vec<Point> {
         use TileType::*;
         let dxs = match self.tile_type {
             NS => vec![0, 0],
@@ -214,7 +236,7 @@ fn next_loop_tile(
     let current_tile = get_tile(tiles, point);
     assert!(current_tile.is_loop, "Tile {:?} not in loop!", point);
 
-    let neighbor_points = current_tile.neighbor_points(map_width, map_height);
+    let neighbor_points = current_tile.neighbor_pipe_points(map_width, map_height);
     let neighbors_in_loop = neighbor_points
         .iter()
         .filter(|n| get_tile(tiles, n).is_loop)
@@ -334,7 +356,7 @@ pub fn run() {
             // println!("Visit {:?}", v_p);
             visited.insert(v_p);
             let v = get_tile(&tiles, &v_p);
-            for u_p in v.neighbor_points(map_width, map_height) {
+            for u_p in v.neighbor_pipe_points(map_width, map_height) {
                 let u = get_tile(&tiles, &u_p);
                 if !u.tile_type.is_empty() {
                     // u is a pipe. Let's visit it if not yet visited.
@@ -362,39 +384,48 @@ pub fn run() {
         }
 
         // Starting at the left hand point, if it's not part of the loop, mark it and all connected points as outside.
-        {
-            let facing_dir = (
-                (next_point.y as i32 - current_point.y as i32),
-                (next_point.x as i32 - current_point.x as i32),
-            );
-            let left_hand_dir = match facing_dir {
-                // dy, dx
-                (-1, 0) => (0, -1),
-                (0, 1) => (1, 0),
-                (1, 0) => (0, -1),
-                (0, -1) => (-1, 0),
-                _ => panic!("Bad facing_dir: {:?}", facing_dir),
-            };
-            let left_hand_point = get_tile(&tiles, &current_point).point_in_dir(
-                left_hand_dir.0,
-                left_hand_dir.1,
-                map_width,
-                map_height,
-            );
-            if let Some(left_hand_point) = left_hand_point {
-                mark_tiles_outside(&mut tiles, &left_hand_point, map_width, map_height);
-            }
+        let facing_dir = (
+            (next_point.y as i32 - current_point.y as i32),
+            (next_point.x as i32 - current_point.x as i32),
+        );
+        let left_hand_dir = match facing_dir {
+            // dy, dx
+            (-1, 0) => (0, -1),
+            (0, 1) => (-1, 0),
+            (1, 0) => (0, 1),
+            (0, -1) => (1, 0),
+            _ => panic!("Bad facing_dir: {:?}", facing_dir),
+        };
+        let left_hand_point = get_tile(&tiles, &current_point).point_in_dir(
+            left_hand_dir.0,
+            left_hand_dir.1,
+            map_width,
+            map_height,
+        );
+        println!(
+            "Current: {:?}, next: {:?}, left: {:?}",
+            current_point, next_point, left_hand_point
+        );
+        if let Some(left_hand_point) = left_hand_point {
+            get_tile_mut(&mut tiles, &left_hand_point).is_current_left = true;
+            mark_tiles_outside(&mut tiles, &left_hand_point, map_width, map_height);
         }
+
+        get_tile_mut(&mut tiles, &current_point).is_occupied = true;
+        get_tile_mut(&mut tiles, &next_point).is_current_facing = true;
+
+        print_grid(&tiles, &mut terminal);
+        std::thread::sleep(Duration::from_millis(100));
+
+        if let Some(left_hand_point) = left_hand_point {
+            get_tile_mut(&mut tiles, &left_hand_point).is_current_left = false;
+        }
+        get_tile_mut(&mut tiles, &next_point).is_current_facing = false;
+        get_tile_mut(&mut tiles, &current_point).is_occupied = false;
 
         // Update current location
         prev_point = Some(current_point);
         current_point = next_point;
-
-        get_tile_mut(&mut tiles, &prev_point.unwrap()).is_occupied = false;
-        get_tile_mut(&mut tiles, &current_point).is_occupied = true;
-        print_grid(&tiles, &mut terminal);
-
-        std::thread::sleep(Duration::from_millis(200));
     }
 
     // println!("{:?}", tiles);
