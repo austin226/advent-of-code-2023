@@ -255,7 +255,7 @@ fn get_big_tile_mut<'a>(
 
 pub fn run() {
     // Input is a square of pipe symbols
-    let input = get_input("src/day10/input7.txt");
+    let input = get_input("src/day10/input_full.txt");
 
     let map_width = input[0].len();
     let map_height = input.len();
@@ -361,7 +361,7 @@ pub fn run() {
                 let u = get_big_tile_mut(&mut big_grid, &u_p);
                 if !u.is_loop && !u.is_outside {
                     u.is_outside = true;
-                    println!("q {:?}", u_p);
+                    // println!("q {:?}", u_p);
                     let _ = q.add(u_p);
                 }
             }
@@ -383,18 +383,18 @@ pub fn run() {
         }
     }
 
-    for r in big_grid.iter() {
-        for c in r {
-            if c.is_loop {
-                print!("8");
-            } else if c.is_outside {
-                print!(".");
-            } else {
-                print!(" ");
-            }
-        }
-        println!();
-    }
+    // for r in big_grid.iter() {
+    //     for c in r {
+    //         if c.is_loop {
+    //             print!("8");
+    //         } else if c.is_outside {
+    //             print!(".");
+    //         } else {
+    //             print!(" ");
+    //         }
+    //     }
+    //     println!();
+    // }
 
     println!("{}", inside_tiles.len());
 
