@@ -6,11 +6,13 @@ use itertools::Itertools;
 
 use crate::common::get_input;
 
+const EXPANSION_SIZE: u64 = 1_000_000;
+
 #[derive(Copy, Clone)]
 struct Galaxy {
     // id: u32,
-    row: usize,
-    col: usize,
+    row: u64,
+    col: u64,
 }
 
 impl fmt::Debug for Galaxy {
@@ -63,12 +65,12 @@ fn expanded_galaxy_locations(
     for r in 0..map_height {
         let mut exp_c = 0;
         if !occupied_rows[r] {
-            exp_r += 1
+            exp_r += EXPANSION_SIZE - 1
         }
         let row_chars = input.get(r).unwrap().chars().collect_vec();
         for c in 0..map_width {
             if !occupied_cols[c] {
-                exp_c += 1
+                exp_c += EXPANSION_SIZE - 1
             }
             let cell = row_chars[c];
             if cell == '#' {
