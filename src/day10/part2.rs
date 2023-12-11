@@ -11,7 +11,7 @@ struct Tile {
 }
 
 impl Tile {
-    fn neighbor_points(&self, map_width: usize, map_height: usize) -> Vec<Point> {
+    fn neighbor_pipe_points(&self, map_width: usize, map_height: usize) -> Vec<Point> {
         use TileType::*;
         let dxs = match self.tile_type {
             NS => vec![0, 0],
@@ -182,6 +182,55 @@ struct Point {
     y: usize,
 }
 
+impl Point {
+    fn neighbor_points(&self, map_width: usize, map_height: usize) -> Vec<Point> {
+        let dxs = vec![0, 1, 0, -1];
+        let dys = vec![-1, 0, 1, 0];
+        debug_assert_eq!(dxs.len(), dys.len());
+
+        let mut res = Vec::new();
+        for i in 0..dxs.len() {
+            let dx = dxs[i];
+            let dy = dys[i];
+            if let Some(neighbor_point) = self.point_in_dir(dy, dx, map_width, map_height) {
+                res.push(neighbor_point);
+            }
+        }
+        res
+    }
+
+    fn point_in_dir(&self, dy: i32, dx: i32, map_width: usize, map_height: usize) -> Option<Point> {
+        let x = self.x as i32 + dx;
+        let y = self.y as i32 + dy;
+        if (0..map_width as i32).contains(&x) && (0..map_height as i32).contains(&y) {
+            return Some(Point {
+                x: x as usize,
+                y: y as usize,
+            });
+        }
+        return None;
+    }
+}
+
+#[derive(Debug, Clone)]
+struct BigGridTile {
+    big_grid_point: Point,
+    orig_point: Point,
+    is_loop: bool,
+    is_outside: bool,
+}
+
+impl BigGridTile {
+    fn new() -> Self {
+        Self {
+            big_grid_point: Point { x: 0, y: 0 },
+            orig_point: Point { x: 0, y: 0 },
+            is_loop: false,
+            is_outside: false,
+        }
+    }
+}
+
 fn get_tile(tiles: &Vec<Vec<Tile>>, point: &Point) -> Tile {
     tiles[point.y][point.x]
 }
@@ -190,9 +239,23 @@ fn get_tile_mut<'a>(tiles: &'a mut Vec<Vec<Tile>>, point: &Point) -> &'a mut Til
     &mut tiles[point.y][point.x]
 }
 
+fn get_big_tile<'a>(
+    big_grid: &'a Vec<Vec<BigGridTile>>,
+    big_grid_point: &Point,
+) -> &'a BigGridTile {
+    &big_grid[big_grid_point.y][big_grid_point.x]
+}
+
+fn get_big_tile_mut<'a>(
+    big_grid: &'a mut Vec<Vec<BigGridTile>>,
+    big_grid_point: &Point,
+) -> &'a mut BigGridTile {
+    &mut big_grid[big_grid_point.y][big_grid_point.x]
+}
+
 pub fn run() {
     // Input is a square of pipe symbols
-    let input = get_input("src/day10/input4.txt");
+    let input = get_input("src/day10/input7.txt");
 
     let map_width = input[0].len();
     let map_height = input.len();
@@ -244,7 +307,7 @@ pub fn run() {
             visited.insert(v_p);
             let v = get_tile_mut(&mut tiles, &v_p);
             v.in_loop = true;
-            for u_p in v.neighbor_points(map_width, map_height) {
+            for u_p in v.neighbor_pipe_points(map_width, map_height) {
                 let u = get_tile(&tiles, &u_p);
                 if !u.tile_type.is_empty() {
                     // u is a pipe. Let's visit it if not yet visited.
@@ -258,23 +321,48 @@ pub fn run() {
 
     // make a big grid
     const BLOCK_SIZE: usize = 3;
-    let mut big_grid: Vec<Vec<bool>> =
-        vec![vec![false; map_width * BLOCK_SIZE]; map_height * BLOCK_SIZE];
+    let mut big_grid: Vec<Vec<BigGridTile>> =
+        vec![vec![BigGridTile::new().clone(); map_width * BLOCK_SIZE]; map_height * BLOCK_SIZE];
     for src_y in 0..map_height {
         let block_start_y = src_y * BLOCK_SIZE;
         for src_x in 0..map_width {
             let block_start_x = src_x * BLOCK_SIZE;
-            let tile = get_tile(&tiles, &Point { x: src_x, y: src_y });
-            if tile.in_loop {
-                for block_segment_r in 0..BLOCK_SIZE {
-                    let dst_y = block_start_y + block_segment_r;
-                    for block_segment_c in 0..BLOCK_SIZE {
-                        let dst_x = block_start_x + block_segment_c;
-                        let block_segment_val = tile
+            let orig_point = Point { x: src_x, y: src_y };
+            let tile = get_tile(&tiles, &orig_point);
+            for block_segment_r in 0..BLOCK_SIZE {
+                let dst_y = block_start_y + block_segment_r;
+                for block_segment_c in 0..BLOCK_SIZE {
+                    let dst_x = block_start_x + block_segment_c;
+                    let block_tile_in_loop = tile.in_loop
+                        && tile
                             .tile_type
                             .to_block_segment(block_segment_r, block_segment_c);
-                        big_grid[dst_y][dst_x] = block_segment_val;
-                    }
+                    big_grid[dst_y][dst_x].big_grid_point = Point { x: dst_x, y: dst_y };
+                    big_grid[dst_y][dst_x].orig_point = orig_point;
+                    big_grid[dst_y][dst_x].is_loop = block_tile_in_loop;
+                }
+            }
+        }
+    }
+
+    // TODO ideally we'd draw a border around the big_grid to guarantee there's no loop pieces around the outside
+
+    // BFS
+    // flood fill from 0,0
+    {
+        let start_p = Point { x: 0, y: 0 };
+        get_big_tile_mut(&mut big_grid, &start_p).is_outside = true;
+
+        let mut q: Queue<Point> = queue![];
+        let _ = q.add(start_p);
+        while q.size() > 0 {
+            let v_p = q.remove().unwrap();
+            for u_p in v_p.neighbor_points(map_width * BLOCK_SIZE, map_height * BLOCK_SIZE) {
+                let u = get_big_tile_mut(&mut big_grid, &u_p);
+                if !u.is_loop && !u.is_outside {
+                    u.is_outside = true;
+                    println!("q {:?}", u_p);
+                    let _ = q.add(u_p);
                 }
             }
         }
@@ -282,7 +370,13 @@ pub fn run() {
 
     for r in big_grid {
         for c in r {
-            print!("{}", if c { 1 } else { 0 });
+            if c.is_loop {
+                print!("8");
+            } else if c.is_outside {
+                print!(".");
+            } else {
+                print!(" ");
+            }
         }
         println!();
     }
