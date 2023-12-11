@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::common::get_input;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 struct Tile {
     tile_type: TileType,
     point: Point,
@@ -368,7 +368,22 @@ pub fn run() {
         }
     }
 
-    for r in big_grid {
+    // Collect all big grid tiles not marked as loop or outside
+    let mut inside_tiles = HashSet::new();
+    for r in big_grid.iter() {
+        for t in r {
+            if !t.is_loop && !t.is_outside {
+                // t is inside loop
+                // Check if the original point was part of the loop
+                let orig_tile = get_tile(&tiles, &t.orig_point);
+                if !orig_tile.in_loop {
+                    inside_tiles.insert(orig_tile);
+                }
+            }
+        }
+    }
+
+    for r in big_grid.iter() {
         for c in r {
             if c.is_loop {
                 print!("8");
@@ -380,6 +395,8 @@ pub fn run() {
         }
         println!();
     }
+
+    println!("{}", inside_tiles.len());
 
     // println!("{:?}", tiles);
 }
