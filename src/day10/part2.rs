@@ -1,13 +1,9 @@
 use colored::Colorize;
 use core::fmt;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use itertools::Itertools;
 use queues::*;
+use std::collections::{HashMap, HashSet};
 use std::io;
-use std::{
-    collections::{HashMap, HashSet},
-    time::Duration,
-};
 use tui::{backend::CrosstermBackend, Terminal};
 
 use crate::common::get_input;
