@@ -256,7 +256,7 @@ fn next_loop_tile(
 
     // TODO
     // Determine clockwise direction
-    return *neighbors_in_loop[1];
+    return *neighbors_in_loop[0];
 }
 
 fn print_grid<W>(tiles: &Vec<Vec<Tile>>, terminal: &mut Terminal<CrosstermBackend<W>>)
@@ -284,15 +284,18 @@ fn mark_tiles_outside(
     // queue point
     let mut q: Queue<Point> = queue![];
     let _ = q.add(*outside_tile_point);
+    let mut in_q = HashSet::<Point>::new();
+    in_q.insert(*outside_tile_point);
     while q.size() > 0 {
         let v_p = q.remove().unwrap();
-        tiles[v_p.y][v_p.x].is_outside = true;
+        get_tile_mut(tiles, &v_p).is_outside = true;
         visited.insert(v_p);
         let v = get_tile(&tiles, &v_p);
         for u_p in v.neighbor_points(map_width, map_height) {
             let u = get_tile(&tiles, &u_p);
-            if !u.is_loop && !visited.contains(&u_p) {
+            if !u.is_loop && !u.is_outside && !visited.contains(&u_p) && !in_q.contains(&u_p) {
                 let _ = q.add(u_p);
+                in_q.insert(u_p);
             }
         }
     }
@@ -305,7 +308,7 @@ pub fn run() {
     let mut terminal = Terminal::new(backend).unwrap();
 
     // Input is a square of pipe symbols
-    let input = get_input("src/day10/input7.txt");
+    let input = get_input("src/day10/input_full.txt");
 
     let map_width = input[0].len();
     let map_height = input.len();
@@ -406,10 +409,10 @@ pub fn run() {
             map_width,
             map_height,
         );
-        println!(
-            "Current: {:?}, next: {:?}, left: {:?}",
-            current_point, next_point, left_hand_point
-        );
+        // println!(
+        //     "Current: {:?}, next: {:?}, left: {:?}",
+        //     current_point, next_point, left_hand_point
+        // );
         if let Some(left_hand_point) = left_hand_point {
             let left_tile = get_tile_mut(&mut tiles, &left_hand_point);
             left_tile.is_current_left = true;
@@ -421,8 +424,8 @@ pub fn run() {
         get_tile_mut(&mut tiles, &current_point).is_occupied = true;
         get_tile_mut(&mut tiles, &next_point).is_current_facing = true;
 
-        print_grid(&tiles, &mut terminal);
-        std::thread::sleep(Duration::from_millis(100));
+        // print_grid(&tiles, &mut terminal);
+        // std::thread::sleep(Duration::from_millis(100));
 
         if let Some(left_hand_point) = left_hand_point {
             get_tile_mut(&mut tiles, &left_hand_point).is_current_left = false;
