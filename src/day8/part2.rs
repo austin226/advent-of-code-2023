@@ -4,11 +4,10 @@ use std::{
 };
 
 use crate::common::get_input;
-use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use regex::Regex;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Node {
     left: String,
     right: String,
@@ -39,61 +38,62 @@ impl Direction {
     }
 }
 
+fn nodes_ending_in(s: char, nodes: &HashMap<String, Node>) -> Vec<String> {
+    nodes
+        .keys()
+        .filter(|n| n.ends_with(s))
+        .map(|n| n.clone())
+        .collect_vec()
+}
+
+fn get_node<'a>(nodes: &'a HashMap<String, Node>, name: &String) -> &'a Node {
+    &nodes[name]
+}
+
 pub fn run() {
     let input = get_input("src/day8/input2.txt");
 
     let directions = parse_directions(&input[0]);
     let nodes = parse_nodes(&input);
-    // println!("{:?}", nodes);
 
-    // Start at all nodes ending in A
-    let mut current_nodes = nodes
-        .keys()
-        .filter(|n| n.ends_with("A"))
-        .map(|n| n.clone())
-        .collect_vec();
-    let mut dir_idx = 0;
-    let mut n_steps = 0;
-    println!("Started at {:?}", current_nodes);
+    let a_nodes = nodes_ending_in('A', &nodes);
 
-    let pb = ProgressBar::new_spinner();
-    pb.enable_steady_tick(Duration::from_millis(120));
-    pb.set_style(
-        ProgressStyle::with_template("{spinner:.blue} {msg}")
-            .unwrap()
-            .tick_strings(&["_..", "._.", ".._", "..."]),
-    );
-    println!("Stepping...");
-    let now = SystemTime::now();
+    // Find all loops
+    let mut loop_multiples = Vec::new();
+    loop_multiples.reserve(a_nodes.len());
+    for a_node in a_nodes.iter() {
+        let mut n_steps = 0;
+        let mut current_node = a_node.to_owned();
+        let mut i = 0;
+        // println!("Start at {:?}", current_node);
 
-    // While not all current nodes end in z
-    while !current_nodes.iter().all(|n| n.ends_with("Z")) {
-        // Count each step.
-        n_steps += 1;
-        pb.set_message(format!(
-            "{} ({:.0})",
-            n_steps,
-            now.elapsed().unwrap().as_secs()
-        ));
+        while !current_node.ends_with("Z") {
+            // Continue
+            let next_dir = &directions[i];
+            let next_node = get_node(&nodes, &current_node).next(&next_dir);
+            assert_ne!(current_node, next_node);
+            // println!("From {:?}, {:?} to {:?}", current_node, next_dir, next_node);
+            current_node = next_node;
 
-        let direction = &directions[dir_idx];
+            i += 1;
+            if i == directions.len() {
+                i = 0;
+            }
+            n_steps += 1;
+        }
 
-        current_nodes = current_nodes
-            .iter()
-            .map(|n| nodes[n].next(direction))
-            .collect_vec();
-        // println!("{:?} to {:?}", direction, current_nodes);
-
-        // Go to next direction, or wrap back around.
-        dir_idx = if dir_idx == directions.len() - 1 {
-            0
-        } else {
-            dir_idx + 1
-        };
+        loop_multiples.push(n_steps as i64);
     }
-    pb.finish_with_message("Done");
+    println!("{:?}", loop_multiples);
 
-    println!("{n_steps} steps.");
+    loop_multiples.sort();
+    let mut lcm = loop_multiples[0];
+    for m in loop_multiples {
+        lcm = num::integer::lcm(lcm, m);
+    }
+    println!("{:?}", lcm);
+
+    // println!("{n_steps} steps.");
 }
 
 fn parse_directions(line: &String) -> Vec<Direction> {
