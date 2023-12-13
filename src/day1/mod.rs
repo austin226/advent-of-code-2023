@@ -1,7 +1,5 @@
 // https://adventofcode.com/2023/day/1
 
-use regex::Regex;
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
