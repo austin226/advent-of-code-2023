@@ -3,14 +3,17 @@ use itertools::Itertools;
 use crate::common::get_input;
 
 fn process_template(template: &str, nums: &[usize], min_start: usize) -> u32 {
-    if nums.len() == 0 || min_start >= template.len() {
+    if nums.len() == 0 {
         return 1;
+    }
+    let my_num = nums[0];
+    if min_start + my_num - 1 >= template.len() {
+        return 0;
     }
 
     let nums_r = &nums[1..];
     let space_r = nums_r.iter().fold(0, |s: usize, n| s + n + 1);
 
-    let my_num = nums[0];
     let max_start = template.len() - space_r - my_num;
     let mut n_possibilities = 0;
     for start in min_start..=max_start {
@@ -51,9 +54,15 @@ fn solution(template: &str, nums: &[usize]) -> u32 {
         .char_indices()
         .into_iter()
         .find(|(_, c)| *c != '.')
-        .map(|(i, _)| i)
-        .unwrap();
-    return process_template(template, &nums[..], min_start);
+        .map(|(i, _)| i);
+    match min_start {
+        Some(min_start) => {
+            return process_template(template, &nums[..], min_start);
+        }
+        None => {
+            return 0;
+        }
+    }
 }
 
 pub fn run() {
@@ -88,8 +97,16 @@ mod tests {
             ("????.#...#...", vec![4, 1, 1], 1),
             ("????.######..#####.", vec![1, 6, 5], 4),
             ("?###????????", vec![3, 2, 1], 10),
+            ("....", vec![1, 1, 1], 0),
+            ("#", vec![2], 0),
+            ("?####????###?###???.", vec![4, 9], 3),
         ] {
-            assert_eq!(expected, solution(template, &nums));
+            assert_eq!(
+                expected,
+                solution(template, &nums),
+                "template '{}'",
+                template
+            );
         }
     }
 }
