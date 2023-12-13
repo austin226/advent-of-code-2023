@@ -1,10 +1,53 @@
+use std::{collections::HashMap, rc::Rc, sync::Arc};
+
 use itertools::Itertools;
 
 use crate::common::get_input;
 
 // WIP - not solved yet
 
-fn process_template(template: &str, nums: &[usize], min_start: usize, result_str: String) -> u32 {
+struct Cache {
+    map: HashMap<CacheKey, u32>,
+}
+
+impl Cache {
+    fn new() -> Self {
+        Self {
+            map: HashMap::new(),
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Hash)]
+struct CacheKey {
+    template: Arc<String>,
+    nums: Vec<usize>,
+    min_start: usize,
+}
+
+impl CacheKey {
+    fn new(template: Arc<String>, nums: &[usize], min_start: usize) -> Self {
+        Self {
+            template: template,
+            nums: nums.to_vec(),
+            min_start,
+        }
+    }
+}
+
+fn process_template(
+    template: Arc<String>,
+    nums: &[usize],
+    min_start: usize,
+    result_str: String,
+    cache: &mut Cache,
+) -> u32 {
+    let key = CacheKey::new(Arc::clone(&template), nums, min_start);
+    if let Some(cached) = cache.map.get(&key) {
+        // println!("Cache hit!");
+        return *cached;
+    }
+
     if nums.len() == 0 {
         let mut str_builder = result_str.clone();
         for i in str_builder.len()..=template.len() {
@@ -20,6 +63,7 @@ fn process_template(template: &str, nums: &[usize], min_start: usize, result_str
             }
         }
 
+        cache.map.insert(key, 1);
         // println!("{}", str_builder);
         return 1;
     }
@@ -68,12 +112,18 @@ fn process_template(template: &str, nums: &[usize], min_start: usize, result_str
             str_builder += "#";
         }
         str_builder += ".";
-        n_possibilities += process_template(template, nums_r, start + my_num + 1, str_builder);
+        n_possibilities += process_template(
+            Arc::clone(&template),
+            nums_r,
+            start + my_num + 1,
+            str_builder,
+            cache,
+        );
     }
     return n_possibilities;
 }
 
-fn solution(template: &str, nums: &[usize]) -> u32 {
+fn solution(template: Arc<String>, nums: &[usize], cache: &mut Cache) -> u32 {
     // Find leftmost point where we can start
     let min_start = template
         .char_indices()
@@ -86,7 +136,7 @@ fn solution(template: &str, nums: &[usize]) -> u32 {
             for i in 0..min_start {
                 str_builder += ".";
             }
-            return process_template(template, &nums[..], min_start, str_builder);
+            return process_template(template, &nums[..], min_start, str_builder, cache);
         }
         None => {
             return 0;
@@ -129,7 +179,8 @@ pub fn run() {
             .collect_vec();
         let nums = unfold_nums(nums);
 
-        sum += solution(&template, &nums);
+        let mut cache = Cache::new();
+        sum += solution(Arc::new(template.to_string()), &nums, &mut cache);
     }
 
     println!("{sum}");
@@ -154,7 +205,7 @@ mod tests {
             ("?####????###?###???.", vec![4, 9], 3),
         ] {
             println!("Template: {template}");
-            let sol = solution(template, &nums);
+            let sol = solution(Arc::new(template.to_string()), &nums, &mut Cache::new());
             assert_eq!(expected, sol, "template '{}'", template);
             println!("{sol}\n");
         }
