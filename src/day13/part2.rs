@@ -1,25 +1,35 @@
 use crate::common::get_input;
 
+fn hamming_distance(s1: &String, s2: &String) -> usize {
+    s1.chars()
+        .into_iter()
+        .zip(s2.chars().into_iter())
+        .filter(|(c1, c2)| c1 != c2)
+        .count()
+}
+
 fn reflect_up_rows(pattern: &Vec<String>) -> Option<u32> {
     // println!("Check pattern: {:?}", pattern);
     for r in 1..pattern.len() {
         // Check if r is a point of symmetry
+        let mut rem_smudges = 1;
         let mut is_symmetrical = true;
         let mut down_r = r;
         let mut up_r = r - 1;
         while down_r < pattern.len() {
-            // println!("Compare {} to {}", pattern[up_r], pattern[down_r]);
-            if pattern[up_r] != pattern[down_r] {
+            let dist = hamming_distance(&pattern[up_r], &pattern[down_r]);
+            if dist > rem_smudges {
                 is_symmetrical = false;
                 break;
             }
+            rem_smudges -= dist;
             if up_r == 0 {
                 break;
             }
             down_r += 1;
             up_r -= 1;
         }
-        if is_symmetrical {
+        if is_symmetrical && rem_smudges == 0 {
             // println!("Symmetrical at {r}");
             return Some(r as u32);
         }
