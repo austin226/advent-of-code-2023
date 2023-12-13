@@ -1,8 +1,30 @@
 use crate::common::get_input;
 
 fn reflect_up_rows(pattern: &Vec<String>) -> Option<u32> {
-    // TODO
-    None
+    // println!("Check pattern: {:?}", pattern);
+    for r in 1..pattern.len() {
+        // Check if r is a point of symmetry
+        let mut is_symmetrical = true;
+        let mut down_r = r;
+        let mut up_r = r - 1;
+        while down_r < pattern.len() {
+            // println!("Compare {} to {}", pattern[up_r], pattern[down_r]);
+            if pattern[up_r] != pattern[down_r] {
+                is_symmetrical = false;
+                break;
+            }
+            if up_r == 0 {
+                break;
+            }
+            down_r += 1;
+            up_r -= 1;
+        }
+        if is_symmetrical {
+            // println!("Symmetrical at {r}");
+            return Some(r as u32);
+        }
+    }
+    return None;
 }
 
 fn reflect_left_cols(pattern: &Vec<String>) -> Option<u32> {
@@ -20,11 +42,12 @@ fn reflect_left_cols(pattern: &Vec<String>) -> Option<u32> {
     }
 
     // Find horizontal symmetry value of the rotated pattern
+    // println!("Check vert:");
     return reflect_up_rows(&vert_slices);
 }
 
 pub fn run() {
-    let input = get_input("src/day13/input0.txt");
+    let input = get_input("src/day13/input1.txt");
 
     let mut patterns = Vec::new();
     let mut n_spaces = 0;
@@ -41,13 +64,15 @@ pub fn run() {
 
     let ans = patterns
         .iter()
-        .map(
-            |pattern| match (reflect_left_cols(pattern), reflect_up_rows(pattern)) {
-                (Some(c), None) => c,
-                (None, Some(r)) => 100 * r,
-                _ => panic!("No symmetry for pattern: {:?}", pattern),
-            },
-        )
+        .map(|pattern| {
+            if let Some(r) = reflect_up_rows(pattern) {
+                100 * r
+            } else if let Some(c) = reflect_left_cols(pattern) {
+                c
+            } else {
+                panic!("No symmetry for pattern: {:?}", pattern)
+            }
+        })
         .sum::<u32>();
 
     println!("{:?}", ans);
