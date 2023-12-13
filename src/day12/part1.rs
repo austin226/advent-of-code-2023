@@ -2,8 +2,13 @@ use itertools::Itertools;
 
 use crate::common::get_input;
 
-fn process_template(template: &str, nums: &[usize], min_start: usize) -> u32 {
+fn process_template(template: &str, nums: &[usize], min_start: usize, result_str: String) -> u32 {
     if nums.len() == 0 {
+        let mut str_builder = result_str.clone();
+        for i in str_builder.len()..=template.len() {
+            str_builder += ".";
+        }
+        println!("{}", str_builder);
         return 1;
     }
     let my_num = nums[0];
@@ -43,7 +48,15 @@ fn process_template(template: &str, nums: &[usize], min_start: usize) -> u32 {
         // );
 
         // Process the rest of the numbers after locking in this position
-        n_possibilities += process_template(template, nums_r, start + my_num + 1);
+        let mut str_builder = result_str.clone();
+        for i in min_start..start {
+            str_builder += ".";
+        }
+        for i in start..(start + my_num) {
+            str_builder += "#";
+        }
+        str_builder += ".";
+        n_possibilities += process_template(template, nums_r, start + my_num + 1, str_builder);
     }
     return n_possibilities;
 }
@@ -55,9 +68,13 @@ fn solution(template: &str, nums: &[usize]) -> u32 {
         .into_iter()
         .find(|(_, c)| *c != '.')
         .map(|(i, _)| i);
+    let mut str_builder = "".to_owned();
     match min_start {
         Some(min_start) => {
-            return process_template(template, &nums[..], min_start);
+            for i in 0..min_start {
+                str_builder += ".";
+            }
+            return process_template(template, &nums[..], min_start, str_builder);
         }
         None => {
             return 0;
@@ -107,6 +124,7 @@ mod tests {
                 "template '{}'",
                 template
             );
+            println!();
         }
     }
 }
