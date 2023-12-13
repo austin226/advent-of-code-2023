@@ -10,7 +10,17 @@ fn process_template(template: &str, nums: &[usize], min_start: usize, result_str
         for i in str_builder.len()..=template.len() {
             str_builder += ".";
         }
-        println!("{}", str_builder);
+        // Check the template against str_builder
+        for i in 0..template.len() {
+            let t = template.chars().nth(i).unwrap();
+            let my = str_builder.chars().nth(i).unwrap();
+            if t == '.' && my == '#' || t == '#' && my != '#' {
+                // println!("Mismatch - template={template}, str = {str_builder}");
+                return 0;
+            }
+        }
+
+        // println!("{}", str_builder);
         return 1;
     }
     let my_num = nums[0];
