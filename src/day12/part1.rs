@@ -1,4 +1,3 @@
-use indicatif::ProgressBar;
 use itertools::Itertools;
 
 use crate::common::get_input;
@@ -46,9 +45,19 @@ fn process_template(template: &str, nums: &[usize], min_start: usize) -> u32 {
     return n_possibilities;
 }
 
+fn solution(template: &str, nums: &[usize]) -> u32 {
+    // Find leftmost point where we can start
+    let min_start = template
+        .char_indices()
+        .into_iter()
+        .find(|(_, c)| *c != '.')
+        .map(|(i, _)| i)
+        .unwrap();
+    return process_template(template, &nums[..], min_start);
+}
+
 pub fn run() {
-    let input = get_input("src/day12/input0.txt");
-    let pb = ProgressBar::new(input.len() as u64);
+    let input = get_input("src/day12/input1.txt");
 
     let mut sum = 0;
     for line in input.iter() {
@@ -59,20 +68,28 @@ pub fn run() {
             .map(|n| n.parse().unwrap())
             .collect_vec();
 
-        // Find leftmost point where we can start
-        let min_start = template
-            .char_indices()
-            .into_iter()
-            .find(|(_, c)| *c != '.')
-            .map(|(i, _)| i)
-            .unwrap();
-        let line_result = process_template(template, &nums[..], min_start);
-        // println!("{}", line_result);
-        sum += line_result;
-
-        pb.inc(1);
+        sum += solution(template, &nums);
     }
 
-    pb.finish();
     println!("{sum}");
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_solution() {
+        for (template, nums, expected) in [
+            ("???.###", vec![1, 1, 3], 1),
+            (".??..??...?##.", vec![1, 1, 3], 4),
+            ("?#?#?#?#?#?#?#?", vec![1, 3, 1, 6], 1),
+            ("????.#...#...", vec![4, 1, 1], 1),
+            ("????.######..#####.", vec![1, 6, 5], 4),
+            ("?###????????", vec![3, 2, 1], 10),
+        ] {
+            assert_eq!(expected, solution(template, &nums));
+        }
+    }
 }
