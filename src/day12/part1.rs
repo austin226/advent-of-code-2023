@@ -2,6 +2,8 @@ use itertools::Itertools;
 
 use crate::common::get_input;
 
+// WIP - not solved yet
+
 fn process_template(template: &str, nums: &[usize], min_start: usize, result_str: String) -> u32 {
     if nums.len() == 0 {
         let mut str_builder = result_str.clone();
@@ -118,13 +120,10 @@ mod tests {
             ("#", vec![2], 0),
             ("?####????###?###???.", vec![4, 9], 3),
         ] {
-            assert_eq!(
-                expected,
-                solution(template, &nums),
-                "template '{}'",
-                template
-            );
-            println!();
+            println!("Template: {template}");
+            let sol = solution(template, &nums);
+            assert_eq!(expected, sol, "template '{}'", template);
+            println!("{sol}\n");
         }
     }
 }
