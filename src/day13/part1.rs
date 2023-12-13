@@ -1,13 +1,26 @@
 use crate::common::get_input;
 
-fn reflect_left_cols(pattern: &Vec<String>) -> Option<u32> {
+fn reflect_up_rows(pattern: &Vec<String>) -> Option<u32> {
     // TODO
     None
 }
 
-fn reflect_up_rows(pattern: &Vec<String>) -> Option<u32> {
-    // TODO
-    None
+fn reflect_left_cols(pattern: &Vec<String>) -> Option<u32> {
+    // Convert pattern into vertical slices
+    let mut vert_slices = Vec::<String>::new();
+    vert_slices.reserve(pattern[0].len());
+    for c in 0..pattern[0].len() {
+        let mut slice = Vec::new();
+        slice.reserve(pattern.len());
+        for r in 0..pattern.len() {
+            let chr = pattern[r].chars().nth(c).unwrap();
+            slice.push(chr);
+        }
+        vert_slices.push(slice.iter().collect());
+    }
+
+    // Find horizontal symmetry value of the rotated pattern
+    return reflect_up_rows(&vert_slices);
 }
 
 pub fn run() {
