@@ -1,11 +1,12 @@
+use indicatif::ProgressBar;
 use itertools::Itertools;
 
 use crate::common::get_input;
 
 // Assume input is rectangular
-fn rotate_input_90cw(input: Vec<String>) -> Vec<String> {
+fn rotate_input_90cw(input: &mut Vec<String>) {
     if input.len() == 0 {
-        return vec![];
+        return;
     }
     let w = input.len();
     let h = input[0].len();
@@ -20,10 +21,10 @@ fn rotate_input_90cw(input: Vec<String>) -> Vec<String> {
         .iter()
         .map(|r| r.into_iter().collect::<String>())
         .collect_vec();
-    return output;
+    *input = output;
 }
 
-fn shift_round_boulders(input: Vec<String>) -> Vec<String> {
+fn shift_round_boulders(input: &mut Vec<String>) {
     let w = input.len();
     let h = input[0].len();
     let mut output = vec![vec!['.'; w]; h];
@@ -55,7 +56,7 @@ fn shift_round_boulders(input: Vec<String>) -> Vec<String> {
         .iter()
         .map(|r| r.into_iter().collect::<String>())
         .collect_vec();
-    return output;
+    *input = output;
 }
 
 fn calculate_load(input: Vec<String>) -> i32 {
@@ -74,9 +75,19 @@ fn calculate_load(input: Vec<String>) -> i32 {
 }
 
 pub fn run() {
-    let input = get_input("src/day14/input0.txt");
-    let rotated = rotate_input_90cw(input);
-    let shifted = shift_round_boulders(rotated);
-    let load = calculate_load(shifted);
+    let input = get_input("src/day14/input1.txt");
+
+    const CYCLES: u64 = 1000000000;
+    let bar = ProgressBar::new(CYCLES);
+    let mut map: Vec<String> = input;
+
+    for _ in 0..CYCLES {
+        rotate_input_90cw(&mut map);
+        shift_round_boulders(&mut map);
+        bar.inc(1);
+    }
+
+    bar.finish();
+    let load = calculate_load(map);
     println!("{load}");
 }
