@@ -58,12 +58,25 @@ fn shift_round_boulders(input: Vec<String>) -> Vec<String> {
     return output;
 }
 
+fn calculate_load(input: Vec<String>) -> i32 {
+    let w = input.len();
+    let h = input[0].len();
+    let mut load = 0i32;
+    for r in 0..h {
+        let row = input[r].chars().collect_vec();
+        for c in 0..w {
+            if row[c] == 'O' {
+                load += (c + 1) as i32;
+            }
+        }
+    }
+    return load;
+}
+
 pub fn run() {
     let input = get_input("src/day14/input0.txt");
     let rotated = rotate_input_90cw(input);
-    println!("{:?}", rotated);
     let shifted = shift_round_boulders(rotated);
-    println!("{:?}", shifted);
-
-    // Rotate input 90 deg to the right
+    let load = calculate_load(shifted);
+    println!("{load}");
 }
