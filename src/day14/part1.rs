@@ -74,7 +74,7 @@ fn calculate_load(input: Vec<String>) -> i32 {
 }
 
 pub fn run() {
-    let input = get_input("src/day14/input0.txt");
+    let input = get_input("src/day14/input1.txt");
     let rotated = rotate_input_90cw(input);
     let shifted = shift_round_boulders(rotated);
     let load = calculate_load(shifted);
