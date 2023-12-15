@@ -131,7 +131,7 @@ fn hash(step_input: &str) -> u8 {
 }
 
 pub fn run() {
-    let input = get_input("src/day15/input0.txt");
+    let input = get_input("src/day15/input1.txt");
     let input_steps = input[0].split(',');
 
     let mut lens_boxes = Vec::new();
