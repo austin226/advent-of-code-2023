@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use std::ops::RangeBounds;
 
+use dashmap::DashMap;
 use indicatif::ProgressBar;
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -11,7 +12,13 @@ const ROUND_BOULDER: u8 = 1;
 const SQUARE_BOULDER: u8 = 2;
 const UNKNOWN: u8 = 8;
 
-fn shift_slice(slice: &mut [u8], n: usize) {
+fn shift_slice(slice: &mut [u8], n: usize, cache: &DashMap<Vec<u8>, Vec<u8>>) {
+    let vec_in = slice.to_vec();
+    if let Some(vec_out) = cache.get(&vec_in) {
+        slice.copy_from_slice(&vec_in[..]);
+        return;
+    }
+
     let mut n_left = 0;
     for c in 0..=n {
         let cur = if c == n { UNKNOWN } else { slice[c] };
@@ -31,12 +38,13 @@ fn shift_slice(slice: &mut [u8], n: usize) {
             n_left += 1;
         }
     }
+    cache.insert(vec_in, slice.to_vec());
 }
 
 // Shift boulders from the left to the right. O(n^2).
-fn shift_round_boulders(matrix: &mut Vec<u8>, n: usize) {
+fn shift_round_boulders(matrix: &mut Vec<u8>, n: usize, cache: &DashMap<Vec<u8>, Vec<u8>>) {
     matrix.par_chunks_mut(n).for_each(|slice| {
-        shift_slice(slice, n);
+        shift_slice(slice, n, cache);
     });
 }
 
@@ -112,17 +120,18 @@ fn print_matrix(matrix: &Vec<u8>, n: usize) {
 pub fn run() {
     let input = get_input("src/day14/input1.txt");
 
-    const CYCLES: u64 = 1_000_000;
+    const CYCLES: u64 = 1_000_000_000;
     let bar = ProgressBar::new(CYCLES);
     let n = input.len();
     assert_ne!(n, 0, "Input must be non-empty");
     assert_eq!(n, input[0].len(), "Input must be square");
 
     let mut matrix = build_matrix(input, n);
+    let cache = DashMap::new();
     for _ in 0..CYCLES {
         for _ in 0..4 {
             rotate_matrix_90cw(&mut matrix, n);
-            shift_round_boulders(&mut matrix, n);
+            shift_round_boulders(&mut matrix, n, &cache);
             // print_matrix(&matrix, n);
         }
         bar.inc(1);
