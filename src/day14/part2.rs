@@ -13,6 +13,8 @@ const UNKNOWN: u8 = 8;
 // Shift boulders from the left to the right. O(n^2).
 fn shift_round_boulders(matrix: &mut Vec<u8>, n: usize, cache: &mut HashMap<Vec<u8>, Vec<u8>>) {
     for r in 0..n {
+        let (my_slice, rest) = matrix.split_at_mut(n);
+
         let mut n_left = 0;
         let row_vals = matrix[to_mat_coord(r, 0, n)..to_mat_coord(r, n, n)].to_vec();
         if let Some(cached) = cache.get(&row_vals) {
