@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::fmt;
 
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -7,20 +7,30 @@ use crate::common::get_input;
 
 static STEP_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"([a-z]+)((-)|(=)(\d+))").unwrap());
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct Lens {
     label: String,
     focal_length: u8,
 }
 
-#[derive(Debug, Clone)]
+impl fmt::Debug for Lens {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[{} {}]", self.label, self.focal_length)
+    }
+}
+
+#[derive(Clone)]
 struct LensBox {
+    index: u8,
     lenses: Vec<Lens>,
 }
 
 impl LensBox {
-    fn new() -> Self {
-        Self { lenses: Vec::new() }
+    fn new(index: u8) -> Self {
+        Self {
+            index,
+            lenses: Vec::new(),
+        }
     }
 
     fn remove(&mut self, label: &String) {
@@ -28,6 +38,16 @@ impl LensBox {
         if let Some(index) = index {
             self.lenses.remove(index);
         }
+    }
+}
+
+impl fmt::Debug for LensBox {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut lenses = String::new();
+        for lens in self.lenses.iter() {
+            lenses = format!("{} {:?}", lenses, lens);
+        }
+        write!(f, "Box {}:{}", self.index, lenses)
     }
 }
 
@@ -80,7 +100,11 @@ pub fn run() {
     let input = get_input("src/day15/input0.txt");
     let input_steps = input[0].split(',');
 
-    let mut lens_boxes = vec![LensBox::new(); 256];
+    let mut lens_boxes = Vec::new();
+    for i in 0..=255 {
+        lens_boxes.push(LensBox::new(i));
+    }
+
     let steps = input_steps.map(|step_str| Step::parse(step_str));
     for step in steps {
         let box_key = hash(&step.label);
@@ -93,5 +117,7 @@ pub fn run() {
         }
     }
 
-    println!("{:?}", lens_boxes);
+    for b in lens_boxes {
+        println!("{:?}", b);
+    }
 }
