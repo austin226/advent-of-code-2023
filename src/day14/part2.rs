@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use indicatif::ProgressBar;
 use itertools::Itertools;
 
@@ -11,16 +9,9 @@ const SQUARE_BOULDER: u8 = 2;
 const UNKNOWN: u8 = 8;
 
 // Shift boulders from the left to the right. O(n^2).
-fn shift_round_boulders(matrix: &mut Vec<u8>, n: usize, cache: &mut HashMap<Vec<u8>, Vec<u8>>) {
+fn shift_round_boulders(matrix: &mut Vec<u8>, n: usize) {
     for r in 0..n {
         let mut n_left = 0;
-        let row_vals = matrix[to_mat_coord(r, 0, n)..to_mat_coord(r, n, n)].to_vec();
-        if let Some(cached) = cache.get(&row_vals) {
-            for c in 0..n {
-                matrix[to_mat_coord(r, c, n)] = row_vals[c];
-            }
-            return;
-        }
         for c in 0..=n {
             let cur = if c == n {
                 UNKNOWN
@@ -43,9 +34,6 @@ fn shift_round_boulders(matrix: &mut Vec<u8>, n: usize, cache: &mut HashMap<Vec<
                 n_left += 1;
             }
         }
-
-        let new_row_vals = matrix[to_mat_coord(r, 0, n)..to_mat_coord(r, n, n)].to_vec();
-        cache.insert(row_vals, new_row_vals);
     }
 }
 
@@ -121,7 +109,7 @@ fn print_matrix(matrix: &Vec<u8>, n: usize) {
 pub fn run() {
     let input = get_input("src/day14/input0.txt");
 
-    const CYCLES: u64 = 1_000_000_000;
+    const CYCLES: u64 = 1_000;
     let bar = ProgressBar::new(CYCLES);
     let n = input.len();
     assert_ne!(n, 0, "Input must be non-empty");
@@ -130,14 +118,12 @@ pub fn run() {
     let mut matrix = build_matrix(input, n);
     // print_matrix(&matrix, n);
 
-    let mut cache = HashMap::new();
-    for _ in 0..CYCLES {
-        for _ in 0..4 {
-            rotate_matrix_90cw(&mut matrix, n);
-            shift_round_boulders(&mut matrix, n, &mut cache);
-        }
+    for _ in 0..(4 * CYCLES) {
+        rotate_matrix_90cw(&mut matrix, n);
+        shift_round_boulders(&mut matrix, n);
         bar.inc(1);
     }
+
     bar.finish();
     let load = calculate_load(&matrix, n);
     println!("{load}");
