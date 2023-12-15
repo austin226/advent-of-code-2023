@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use once_cell::sync::Lazy;
 use regex::Regex;
 
@@ -5,15 +7,28 @@ use crate::common::get_input;
 
 static STEP_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"([a-z]+)((-)|(=)(\d+))").unwrap());
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Lens {
     label: String,
     focal_length: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct LensBox {
     lenses: Vec<Lens>,
+}
+
+impl LensBox {
+    fn new() -> Self {
+        Self { lenses: Vec::new() }
+    }
+
+    fn remove(&mut self, label: &String) {
+        let index = self.lenses.iter().position(|l| l.label == *label);
+        if let Some(index) = index {
+            self.lenses.remove(index);
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -55,18 +70,28 @@ impl Step {
     }
 }
 
-fn hash(step_input: &str) -> u32 {
+fn hash(step_input: &str) -> u8 {
     step_input
         .bytes()
-        .fold(0, |acc, x| ((((acc as u32) + (x as u32)) * 17) % 256))
+        .fold(0, |acc, x| ((((acc as u32) + (x as u32)) * 17) % 256)) as u8
 }
 
 pub fn run() {
     let input = get_input("src/day15/input0.txt");
     let input_steps = input[0].split(',');
 
+    let mut lens_boxes = vec![LensBox::new(); 256];
     let steps = input_steps.map(|step_str| Step::parse(step_str));
     for step in steps {
-        //
+        let box_key = hash(&step.label);
+        let lens_box = &mut lens_boxes[box_key as usize];
+        match step.step_type {
+            StepType::Add(_) => {}
+            StepType::Remove => {
+                lens_box.remove(&step.label);
+            }
+        }
     }
+
+    println!("{:?}", lens_boxes);
 }
