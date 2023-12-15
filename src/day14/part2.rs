@@ -104,16 +104,16 @@ fn to_mat_coord(r: usize, c: usize, n: usize) -> usize {
 fn rotate_matrix_90cw(matrix: &mut Vec<u8>, n: usize) {
     for i in 0..(n / 2) {
         for j in i..(n - i - 1) {
-            let a = to_mat_coord(i, j, n);
-            let b = to_mat_coord(n - 1 - j, i, n);
-            let c = to_mat_coord(n - 1 - i, n - 1 - j, n);
-            let d = to_mat_coord(j, n - 1 - i, n);
+            let top_left = to_mat_coord(i, j, n);
+            let top_right = to_mat_coord(j, n - 1 - i, n);
+            let bottom_right = to_mat_coord(n - 1 - i, n - 1 - j, n);
+            let bottom_left = to_mat_coord(n - 1 - j, i, n);
 
-            let temp = matrix[i * n + j];
-            matrix[a] = matrix[b];
-            matrix[b] = matrix[c];
-            matrix[c] = matrix[d];
-            matrix[d] = temp;
+            let temp = matrix[top_left];
+            matrix[top_left] = matrix[bottom_left];
+            matrix[bottom_left] = matrix[bottom_right];
+            matrix[bottom_right] = matrix[top_right];
+            matrix[top_right] = temp;
         }
     }
 }
