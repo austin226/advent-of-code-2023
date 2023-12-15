@@ -78,28 +78,40 @@ const GAP: u8 = 0;
 const ROUND_BOULDER: u8 = 1;
 const SQUARE_BOULDER: u8 = 2;
 
-fn build_matrix(input: Vec<String>) -> Vec<u8> {
-    let h = input.len();
-    let w = input[0].len();
-    let mut matrix = vec![GAP; w * h];
+fn build_matrix(input: Vec<String>, n: usize) -> Vec<u8> {
+    let mut matrix = vec![GAP; n * n];
 
-    for r in 0..h {
+    for r in 0..n {
         let in_row_chars = input[r].chars().collect_vec();
-        for c in 0..w {
+        for c in 0..n {
             let in_char = in_row_chars[c];
             let mat_char = match in_char {
                 'O' => ROUND_BOULDER,
                 '#' => SQUARE_BOULDER,
                 _ => continue,
             };
-            matrix[r * w + c] = mat_char;
+            matrix[r * n + c] = mat_char;
         }
     }
     return matrix;
 }
 
-fn rotate_matrix_90cw(matrix: &mut Vec<u8>) {
+fn rotate_matrix_90cw(matrix: &mut Vec<u8>, n: usize) {}
 
+fn print_matrix(matrix: &Vec<u8>, n: usize) {
+    for i in 0..n {
+        for j in 0..n {
+            let c = match matrix[i * n + j] {
+                GAP => '.',
+                ROUND_BOULDER => 'O',
+                SQUARE_BOULDER => '#',
+                _ => panic!(),
+            };
+            print!("{c}");
+        }
+        println!();
+    }
+    println!();
 }
 
 pub fn run() {
@@ -107,8 +119,15 @@ pub fn run() {
 
     const CYCLES: u64 = 1000000000;
     let bar = ProgressBar::new(CYCLES);
-    let mut matrix = build_matrix(input);
-    println!("{:?}", matrix);
+    let n = input.len();
+    assert_ne!(n, 0, "Input must be non-empty");
+    assert_eq!(n, input[0].len(), "Input must be square");
+
+    let mut matrix = build_matrix(input, n);
+    print_matrix(&matrix, n);
+
+    rotate_matrix_90cw(&mut matrix, n);
+    print_matrix(&matrix, n);
     // let mut map: Vec<String> = input;
 
     // for _ in 0..CYCLES {
