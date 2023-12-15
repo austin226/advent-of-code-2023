@@ -74,20 +74,50 @@ fn calculate_load(input: Vec<String>) -> i32 {
     return load;
 }
 
+const GAP: u8 = 0;
+const ROUND_BOULDER: u8 = 1;
+const SQUARE_BOULDER: u8 = 2;
+
+fn build_matrix(input: Vec<String>) -> Vec<u8> {
+    let h = input.len();
+    let w = input[0].len();
+    let mut matrix = vec![GAP; w * h];
+
+    for r in 0..h {
+        let in_row_chars = input[r].chars().collect_vec();
+        for c in 0..w {
+            let in_char = in_row_chars[c];
+            let mat_char = match in_char {
+                'O' => ROUND_BOULDER,
+                '#' => SQUARE_BOULDER,
+                _ => continue,
+            };
+            matrix[r * w + c] = mat_char;
+        }
+    }
+    return matrix;
+}
+
+fn rotate_matrix_90cw(matrix: &mut Vec<u8>) {
+
+}
+
 pub fn run() {
-    let input = get_input("src/day14/input1.txt");
+    let input = get_input("src/day14/input0.txt");
 
     const CYCLES: u64 = 1000000000;
     let bar = ProgressBar::new(CYCLES);
-    let mut map: Vec<String> = input;
+    let mut matrix = build_matrix(input);
+    println!("{:?}", matrix);
+    // let mut map: Vec<String> = input;
 
-    for _ in 0..CYCLES {
-        rotate_input_90cw(&mut map);
-        shift_round_boulders(&mut map);
-        bar.inc(1);
-    }
+    // for _ in 0..CYCLES {
+    //     rotate_input_90cw(&mut map);
+    //     shift_round_boulders(&mut map);
+    //     bar.inc(1);
+    // }
 
-    bar.finish();
-    let load = calculate_load(map);
-    println!("{load}");
+    // bar.finish();
+    // let load = calculate_load(map);
+    // println!("{load}");
 }
