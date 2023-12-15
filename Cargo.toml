@@ -16,6 +16,3 @@ rangemap = "1.4.0"
 rayon = "1.8.0"
 regex = "1.10.2"
 tui = "0.19.0"
-
-[profile.release]
-debug = 1

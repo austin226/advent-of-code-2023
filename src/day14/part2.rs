@@ -112,7 +112,7 @@ fn print_matrix(matrix: &Vec<u8>, n: usize) {
 pub fn run() {
     let input = get_input("src/day14/input1.txt");
 
-    const CYCLES: u64 = 1_000_000;
+    const CYCLES: u64 = 1_000_000_000;
     let bar = ProgressBar::new(CYCLES);
     let n = input.len();
     assert_ne!(n, 0, "Input must be non-empty");
