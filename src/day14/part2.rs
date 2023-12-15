@@ -90,13 +90,33 @@ fn build_matrix(input: Vec<String>, n: usize) -> Vec<u8> {
                 '#' => SQUARE_BOULDER,
                 _ => continue,
             };
-            matrix[r * n + c] = mat_char;
+            matrix[to_mat_coord(r, c, n)] = mat_char;
         }
     }
     return matrix;
 }
 
-fn rotate_matrix_90cw(matrix: &mut Vec<u8>, n: usize) {}
+fn to_mat_coord(r: usize, c: usize, n: usize) -> usize {
+    r * n + c
+}
+
+// Rotate the matrix in-place, O(n^2) time
+fn rotate_matrix_90cw(matrix: &mut Vec<u8>, n: usize) {
+    for i in 0..(n / 2) {
+        for j in i..(n - i - 1) {
+            let a = to_mat_coord(i, j, n);
+            let b = to_mat_coord(n - 1 - j, i, n);
+            let c = to_mat_coord(n - 1 - i, n - 1 - j, n);
+            let d = to_mat_coord(j, n - 1 - i, n);
+
+            let temp = matrix[i * n + j];
+            matrix[a] = matrix[b];
+            matrix[b] = matrix[c];
+            matrix[c] = matrix[d];
+            matrix[d] = temp;
+        }
+    }
+}
 
 fn print_matrix(matrix: &Vec<u8>, n: usize) {
     for i in 0..n {
