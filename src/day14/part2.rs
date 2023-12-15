@@ -37,14 +37,12 @@ fn shift_round_boulders(matrix: &mut Vec<u8>, n: usize) {
     }
 }
 
-fn calculate_load(input: Vec<String>) -> i32 {
-    let w = input.len();
-    let h = input[0].len();
+fn calculate_load(matrix: &Vec<u8>, n: usize) -> i32 {
     let mut load = 0i32;
-    for r in 0..h {
-        let row = input[r].chars().collect_vec();
-        for c in 0..w {
-            if row[c] == 'O' {
+    for r in 0..n {
+        for c in 0..n {
+            let cur = matrix[to_mat_coord(r, c, n)];
+            if cur == ROUND_BOULDER {
                 load += (c + 1) as i32;
             }
         }
@@ -111,7 +109,7 @@ fn print_matrix(matrix: &Vec<u8>, n: usize) {
 pub fn run() {
     let input = get_input("src/day14/input0.txt");
 
-    const CYCLES: u64 = 1_000_000_000;
+    const CYCLES: u64 = 1_000;
     let bar = ProgressBar::new(CYCLES);
     let n = input.len();
     assert_ne!(n, 0, "Input must be non-empty");
@@ -120,13 +118,13 @@ pub fn run() {
     let mut matrix = build_matrix(input, n);
     // print_matrix(&matrix, n);
 
-    for _ in 0..CYCLES {
+    for _ in 0..(4 * CYCLES) {
         rotate_matrix_90cw(&mut matrix, n);
         shift_round_boulders(&mut matrix, n);
         bar.inc(1);
     }
 
     bar.finish();
-    // let load = calculate_load(map);
-    // println!("{load}");
+    let load = calculate_load(&matrix, n);
+    println!("{load}");
 }
