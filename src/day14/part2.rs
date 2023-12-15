@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use indicatif::ProgressBar;
 use itertools::Itertools;
+use rayon::prelude::*;
 
 use crate::common::get_input;
 
@@ -10,45 +11,33 @@ const ROUND_BOULDER: u8 = 1;
 const SQUARE_BOULDER: u8 = 2;
 const UNKNOWN: u8 = 8;
 
-// Shift boulders from the left to the right. O(n^2).
-fn shift_round_boulders(matrix: &mut Vec<u8>, n: usize, cache: &mut HashMap<Vec<u8>, Vec<u8>>) {
-    for r in 0..n {
-        let (my_slice, rest) = matrix.split_at_mut(n);
-
-        let mut n_left = 0;
-        let row_vals = matrix[to_mat_coord(r, 0, n)..to_mat_coord(r, n, n)].to_vec();
-        if let Some(cached) = cache.get(&row_vals) {
-            for c in 0..n {
-                matrix[to_mat_coord(r, c, n)] = row_vals[c];
+fn shift_slice(slice: &mut [u8], n: usize) {
+    let mut n_left = 0;
+    for c in 0..=n {
+        let cur = if c == n { UNKNOWN } else { slice[c] };
+        if c == n || cur == SQUARE_BOULDER {
+            // Shift boulders on the left
+            for b in (c - n_left)..c {
+                slice[b] = ROUND_BOULDER;
             }
-            return;
-        }
-        for c in 0..=n {
-            let cur = if c == n {
-                UNKNOWN
-            } else {
-                matrix[to_mat_coord(r, c, n)]
-            };
-            if c == n || cur == SQUARE_BOULDER {
-                // Shift boulders on the left
-                for b in (c - n_left)..c {
-                    matrix[to_mat_coord(r, b, n)] = ROUND_BOULDER;
+            for d in (0..(c - n_left)).rev() {
+                if slice[d] == SQUARE_BOULDER {
+                    break;
                 }
-                for d in (0..(c - n_left)).rev() {
-                    if matrix[to_mat_coord(r, d, n)] == SQUARE_BOULDER {
-                        break;
-                    }
-                    matrix[to_mat_coord(r, d, n)] = GAP;
-                }
-                n_left = 0;
-            } else if cur == ROUND_BOULDER {
-                n_left += 1;
+                slice[d] = GAP;
             }
+            n_left = 0;
+        } else if cur == ROUND_BOULDER {
+            n_left += 1;
         }
-
-        let new_row_vals = matrix[to_mat_coord(r, 0, n)..to_mat_coord(r, n, n)].to_vec();
-        cache.insert(row_vals, new_row_vals);
     }
+}
+
+// Shift boulders from the left to the right. O(n^2).
+fn shift_round_boulders(matrix: &mut Vec<u8>, n: usize) {
+    matrix.par_chunks_mut(n).for_each(|slice| {
+        shift_slice(slice, n);
+    });
 }
 
 fn calculate_load(matrix: &Vec<u8>, n: usize) -> i32 {
@@ -121,22 +110,20 @@ fn print_matrix(matrix: &Vec<u8>, n: usize) {
 }
 
 pub fn run() {
-    let input = get_input("src/day14/input0.txt");
+    let input = get_input("src/day14/input1.txt");
 
-    const CYCLES: u64 = 1_000_000_000;
+    const CYCLES: u64 = 1_000_000;
     let bar = ProgressBar::new(CYCLES);
     let n = input.len();
     assert_ne!(n, 0, "Input must be non-empty");
     assert_eq!(n, input[0].len(), "Input must be square");
 
     let mut matrix = build_matrix(input, n);
-    // print_matrix(&matrix, n);
-
-    let mut cache = HashMap::new();
     for _ in 0..CYCLES {
         for _ in 0..4 {
             rotate_matrix_90cw(&mut matrix, n);
-            shift_round_boulders(&mut matrix, n, &mut cache);
+            shift_round_boulders(&mut matrix, n);
+            // print_matrix(&matrix, n);
         }
         bar.inc(1);
     }
