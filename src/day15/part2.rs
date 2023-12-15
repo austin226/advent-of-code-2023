@@ -19,6 +19,12 @@ impl fmt::Debug for Lens {
     }
 }
 
+impl Lens {
+    fn focusing_power(&self, box_index: u8, slot_index: usize) -> u64 {
+        (1 + box_index as u64) * (1 + slot_index as u64) * (self.focal_length as u64)
+    }
+}
+
 #[derive(Clone)]
 struct LensBox {
     index: u8,
@@ -58,6 +64,14 @@ impl LensBox {
 
     fn is_empty(&self) -> bool {
         self.lenses.is_empty()
+    }
+
+    fn focusing_power(&self) -> u64 {
+        self.lenses
+            .iter()
+            .enumerate()
+            .map(|(i, lens)| lens.focusing_power(self.index, i))
+            .sum::<u64>()
     }
 }
 
@@ -139,9 +153,13 @@ pub fn run() {
         }
     }
 
+    let mut focusing_power = 0;
     for b in lens_boxes {
         if !b.is_empty() {
+            focusing_power += b.focusing_power();
             println!("{:?}", b);
         }
     }
+
+    println!("{}", focusing_power);
 }
