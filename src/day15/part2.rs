@@ -33,11 +33,31 @@ impl LensBox {
         }
     }
 
+    fn add_or_replace(&mut self, label: &String, focal_length: u8) {
+        for lens in self.lenses.iter_mut() {
+            if lens.label == *label {
+                // Replace lens if found
+                lens.focal_length = focal_length;
+                return;
+            }
+        }
+
+        // Add lens if not found
+        self.lenses.push(Lens {
+            label: label.clone(),
+            focal_length,
+        });
+    }
+
     fn remove(&mut self, label: &String) {
         let index = self.lenses.iter().position(|l| l.label == *label);
         if let Some(index) = index {
             self.lenses.remove(index);
         }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.lenses.is_empty()
     }
 }
 
@@ -53,7 +73,7 @@ impl fmt::Debug for LensBox {
 
 #[derive(Debug)]
 enum StepType {
-    Add(i32),
+    Add(u8),
     Remove,
 }
 
@@ -70,19 +90,19 @@ impl Step {
         let label = caps.get(1).unwrap().as_str();
         let minus = caps.get(3).and_then(|f| Some(f.as_str()));
         let eq = caps.get(4).and_then(|f| Some(f.as_str()));
-        let focal = caps
+        let focal_length = caps
             .get(5)
-            .and_then(|f| Some(f.as_str().parse::<i32>().unwrap()));
+            .and_then(|f| Some(f.as_str().parse::<u8>().unwrap()));
 
         if let Some(minus) = minus {
             return Self {
                 label: label.to_string(),
                 step_type: StepType::Remove,
             };
-        } else if let (Some(eq), Some(focal)) = (eq, focal) {
+        } else if let (Some(eq), Some(focal_length)) = (eq, focal_length) {
             return Self {
                 label: label.to_string(),
-                step_type: StepType::Add(focal),
+                step_type: StepType::Add(focal_length),
             };
         } else {
             panic!("Invalid step_str: {step_str}");
@@ -110,7 +130,9 @@ pub fn run() {
         let box_key = hash(&step.label);
         let lens_box = &mut lens_boxes[box_key as usize];
         match step.step_type {
-            StepType::Add(_) => {}
+            StepType::Add(focal_length) => {
+                lens_box.add_or_replace(&step.label, focal_length);
+            }
             StepType::Remove => {
                 lens_box.remove(&step.label);
             }
@@ -118,6 +140,8 @@ pub fn run() {
     }
 
     for b in lens_boxes {
-        println!("{:?}", b);
+        if !b.is_empty() {
+            println!("{:?}", b);
+        }
     }
 }
