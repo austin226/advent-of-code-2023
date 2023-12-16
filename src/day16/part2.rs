@@ -2,6 +2,7 @@ use core::fmt;
 use std::collections::{HashSet, VecDeque};
 
 use itertools::Itertools;
+use rayon::prelude::*;
 
 use crate::common::get_input;
 
@@ -11,7 +12,7 @@ struct Point {
     col: u8,
 }
 
-impl fmt::Display for Point {
+impl fmt::Debug for Point {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "({},{})", self.row, self.col)
     }
@@ -163,6 +164,44 @@ impl Map {
         let next_point = self.next_point(start, direction)?;
         self.tile_at(&next_point)
     }
+
+    fn start_positions(&self) -> Vec<(Point, Direction)> {
+        let mut res: Vec<(Point, Direction)> = Vec::new();
+
+        // Top
+        for col in 0..self.width {
+            res.push((Point { row: 0, col }, Direction::Down));
+        }
+
+        // Right
+        for row in 0..self.height {
+            res.push((
+                Point {
+                    row,
+                    col: self.width - 1,
+                },
+                Direction::Left,
+            ));
+        }
+
+        // Bottom
+        for col in 0..self.width {
+            res.push((
+                Point {
+                    row: self.height - 1,
+                    col,
+                },
+                Direction::Up,
+            ));
+        }
+
+        // Left
+        for row in 0..self.height {
+            res.push((Point { row, col: 0 }, Direction::Right));
+        }
+
+        return res;
+    }
 }
 
 struct Beam {
@@ -247,14 +286,11 @@ impl Beam {
     }
 }
 
-pub fn run() {
-    let input = get_input("src/day16/input0.txt");
-
-    let map = Map::new(input);
+fn simulate(map: &Map, start_point: Point, start_dir: Direction) -> usize {
     let mut visited_points = HashSet::<Point>::new();
     let mut visited_points_dirs = HashSet::<(Point, Direction)>::new();
     let mut beam_q = VecDeque::<Beam>::new();
-    beam_q.push_back(Beam::new(0, Point { row: 0, col: 0 }, Direction::Right));
+    beam_q.push_back(Beam::new(0, start_point, start_dir));
 
     while !beam_q.is_empty() {
         let mut beam = beam_q
@@ -290,5 +326,18 @@ pub fn run() {
         }
     }
 
-    println!("{}", visited_points.len());
+    return visited_points.len();
+}
+
+pub fn run() {
+    let input = get_input("src/day16/input1.txt");
+
+    let map = Map::new(input);
+    let start_positions = map.start_positions();
+    let ans = start_positions
+        .par_iter()
+        .map(|(start_point, start_dir)| simulate(&map, *start_point, *start_dir))
+        .max();
+
+    println!("max = {}", ans.unwrap_or(0));
 }
