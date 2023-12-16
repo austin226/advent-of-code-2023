@@ -254,7 +254,7 @@ impl Beam {
 }
 
 pub fn run() {
-    let input = get_input("src/day16/input0.txt");
+    let input = get_input("src/day16/input1.txt");
 
     let map = Map::new(input);
     let mut visited_points = HashSet::<Point>::new();
