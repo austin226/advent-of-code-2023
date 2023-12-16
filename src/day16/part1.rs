@@ -1,5 +1,5 @@
 use core::fmt;
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use itertools::Itertools;
 
@@ -166,18 +166,22 @@ impl Map {
 }
 
 struct Beam {
+    id: u64,
     point: Point,
     direction: Direction,
     alive: bool,
 }
 
-impl Beam {
+impl Default for Beam {
     fn default() -> Self {
-        Self::new(Point { row: 0, col: 0 }, Direction::Right)
+        Self::new(0, Point { row: 0, col: 0 }, Direction::Right)
     }
+}
 
-    fn new(point: Point, direction: Direction) -> Self {
+impl Beam {
+    fn new(id: u64, point: Point, direction: Direction) -> Self {
         Self {
+            id,
             point,
             direction,
             alive: true,
@@ -187,15 +191,10 @@ impl Beam {
     /// Transform this beam, and maybe return a spawned beam as well
     fn transform(&mut self, map: &Map) -> Option<Beam> {
         let current_tile = map.tile_at(&self.point)?;
+        let mut new_beam: Option<Beam> = None;
         match current_tile.tile_type {
             TileType::Empty => {
-                // continue in same direction
-                if let Some(point) = map.next_point(&self.point, &self.direction) {
-                    self.point = point;
-                } else {
-                    self.alive = false;
-                }
-                // TODO if moved off map, despawn the beam. Do this in main.
+                // Continue in same direction
             }
             TileType::Mirror(mirror_direction) => {
                 use Direction::*;
@@ -209,7 +208,7 @@ impl Beam {
                     (Down, LeanLeft) => Right,
                     (Left, LeanRight) => Down,
                     (Left, LeanLeft) => Up,
-                }
+                };
             }
             TileType::Splitter(splitter_direction) => {
                 use Direction::*;
@@ -219,30 +218,38 @@ impl Beam {
                     | (Right, Horizontal)
                     | (Down, Vertical)
                     | (Left, Horizontal) => {
-                        // Act like empty space
-                        if let Some(point) = map.next_point(&self.point, &self.direction) {
-                            self.point = point;
-                        } else {
-                            self.alive = false;
-                        }
+                        // Continue in same direction
                     }
                     (Up, Horizontal) | (Down, Horizontal) => {
                         // Split left/right
                         self.direction = Direction::Left;
-                        let new_beam = Beam::new(self.point, Direction::Right);
-                        return Some(new_beam);
+                        new_beam = Some(self.spawn_new_beam(Direction::Right));
                     }
                     (Right, Vertical) | (Left, Vertical) => {
                         // Split up/down
                         self.direction = Direction::Up;
-                        let new_beam = Beam::new(self.point, Direction::Down);
-                        return Some(new_beam);
+                        new_beam = Some(self.spawn_new_beam(Direction::Down));
                     }
                 }
             }
         }
 
-        return None;
+        if let Some(point) = map.next_point(&self.point, &self.direction) {
+            self.point = point;
+        } else {
+            self.die();
+        }
+
+        return new_beam;
+    }
+
+    fn spawn_new_beam(&self, direction: Direction) -> Beam {
+        Beam::new(self.id + 1, self.point, direction)
+    }
+
+    fn die(&mut self) {
+        println!("Beam {} dies", self.id);
+        self.alive = false;
     }
 }
 
@@ -252,30 +259,40 @@ pub fn run() {
     let map = Map::new(input);
     let mut visited_points = HashSet::<Point>::new();
     let mut visited_points_dirs = HashSet::<(Point, Direction)>::new();
-    let mut beams = Vec::<Beam>::new();
-    beams.push(Beam::default());
+    let mut beam_q = VecDeque::<Beam>::new();
+    beam_q.push_back(Beam::default());
 
-    loop {
-        let mut some_alive = false;
-        for beam in beams.iter_mut() {
-            if !beam.alive {
-                continue;
-            }
-            some_alive = true;
+    while !beam_q.is_empty() {
+        let mut beam = beam_q
+            .pop_front()
+            .expect("Tried to remove a beam from an empty queue");
+        if !beam.alive {
+            continue;
+        }
+        visited_points.insert(beam.point);
+        visited_points_dirs.insert((beam.point, beam.direction));
 
-            println!("Beam starts at {} going {:?}", beam.point, beam.direction);
-            beam.transform(&map);
-            println!("Beam moves to {} going {:?}", beam.point, beam.direction);
+        println!(
+            "Beam {} starts at {} going {:?}",
+            beam.id, beam.point, beam.direction
+        );
+        if let Some(split_beam) = beam.transform(&map) {
+            println!("Beam {} spawns Beam {}", beam.id, split_beam.id);
+            beam_q.push_back(split_beam);
+        }
+        println!(
+            "Beam {} moves to {} going {:?}",
+            beam.id, beam.point, beam.direction
+        );
+
+        if beam.alive {
             if visited_points_dirs.contains(&(beam.point, beam.direction)) {
                 // Already visited this point with the same direction. Kill the beam.
-                beam.alive = false;
-            } else if beam.alive {
-                visited_points.insert(beam.point);
-                visited_points_dirs.insert((beam.point, beam.direction));
+                beam.die();
+            } else {
+                // Keep simulating this beam
+                beam_q.push_back(beam);
             }
-        }
-        if !some_alive {
-            break;
         }
     }
 
