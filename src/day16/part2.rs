@@ -172,12 +172,6 @@ struct Beam {
     alive: bool,
 }
 
-impl Default for Beam {
-    fn default() -> Self {
-        Self::new(0, Point { row: 0, col: 0 }, Direction::Right)
-    }
-}
-
 impl Beam {
     fn new(id: u64, point: Point, direction: Direction) -> Self {
         Self {
@@ -248,19 +242,19 @@ impl Beam {
     }
 
     fn die(&mut self) {
-        println!("Beam {} dies", self.id);
+        // println!("Beam {} dies", self.id);
         self.alive = false;
     }
 }
 
 pub fn run() {
-    let input = get_input("src/day16/input1.txt");
+    let input = get_input("src/day16/input0.txt");
 
     let map = Map::new(input);
     let mut visited_points = HashSet::<Point>::new();
     let mut visited_points_dirs = HashSet::<(Point, Direction)>::new();
     let mut beam_q = VecDeque::<Beam>::new();
-    beam_q.push_back(Beam::default());
+    beam_q.push_back(Beam::new(0, Point { row: 0, col: 0 }, Direction::Right));
 
     while !beam_q.is_empty() {
         let mut beam = beam_q
@@ -272,18 +266,18 @@ pub fn run() {
         visited_points.insert(beam.point);
         visited_points_dirs.insert((beam.point, beam.direction));
 
-        println!(
-            "Beam {} starts at {} going {:?}",
-            beam.id, beam.point, beam.direction
-        );
+        // println!(
+        //     "Beam {} starts at {} going {:?}",
+        //     beam.id, beam.point, beam.direction
+        // );
         if let Some(split_beam) = beam.transform(&map) {
-            println!("Beam {} spawns Beam {}", beam.id, split_beam.id);
+            // println!("Beam {} spawns Beam {}", beam.id, split_beam.id);
             beam_q.push_back(split_beam);
         }
-        println!(
-            "Beam {} moves to {} going {:?}",
-            beam.id, beam.point, beam.direction
-        );
+        // println!(
+        //     "Beam {} moves to {} going {:?}",
+        //     beam.id, beam.point, beam.direction
+        // );
 
         if beam.alive {
             if visited_points_dirs.contains(&(beam.point, beam.direction)) {
