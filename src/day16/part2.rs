@@ -302,18 +302,9 @@ fn simulate(map: &Map, start_point: Point, start_dir: Direction) -> usize {
         visited_points.insert(beam.point);
         visited_points_dirs.insert((beam.point, beam.direction));
 
-        // println!(
-        //     "Beam {} starts at {} going {:?}",
-        //     beam.id, beam.point, beam.direction
-        // );
         if let Some(split_beam) = beam.transform(&map) {
-            // println!("Beam {} spawns Beam {}", beam.id, split_beam.id);
             beam_q.push_back(split_beam);
         }
-        // println!(
-        //     "Beam {} moves to {} going {:?}",
-        //     beam.id, beam.point, beam.direction
-        // );
 
         if beam.alive {
             if visited_points_dirs.contains(&(beam.point, beam.direction)) {
