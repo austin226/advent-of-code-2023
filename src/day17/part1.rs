@@ -1,5 +1,6 @@
 use std::cmp::Reverse;
 use std::collections::HashMap;
+use std::fmt::Formatter;
 use std::ops::Index;
 
 use itertools::Itertools;
@@ -20,6 +21,12 @@ struct Position {
     row: usize,
     col: usize,
     variant: NodeVariant,
+}
+
+impl std::fmt::Debug for Position {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({},{},{:?})", self.row, self.col, self.variant)
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -181,10 +188,12 @@ impl Graph {
         let mut current = current;
         let mut total = self.node_at(current.row, current.col).unwrap().heat_loss as u64;
         while came_from.contains_key(current) {
+            println!("{:?}", current);
             current = &came_from[current];
             total += self.node_at(current.row, current.col).unwrap().heat_loss as u64;
         }
-        total
+        // Don't include first item
+        total - self.node_at(current.row, current.col).unwrap().heat_loss as u64
     }
 
     fn a_star(&self, start_pos: &Position, goal: (usize, usize)) -> u64 {
@@ -223,7 +232,7 @@ impl Graph {
                 }
             }
         }
-        0
+        panic!("Failed to find a path");
     }
 }
 
