@@ -31,6 +31,7 @@ impl std::fmt::Debug for Position {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum NodeVariant {
+    Init,
     U1,
     U2,
     U3,
@@ -174,7 +175,7 @@ impl Graph {
         let mut current = current;
         let mut total = self.heat_loss_at(current);
         while came_from.contains_key(current) {
-            println!("{:?}-{:?}", current, self.heat_loss_at(current));
+            // println!("{:?}-{:?}", current, self.heat_loss_at(current));
             current = &came_from[current];
             total += self.heat_loss_at(current);
         }
@@ -227,7 +228,7 @@ pub fn run() {
     let start_pos = Position {
         row: 0,
         col: 0,
-        variant: NodeVariant::U1,
+        variant: NodeVariant::Init,
     };
     let ans = graph.a_star(&start_pos);
     println!("{ans}");
