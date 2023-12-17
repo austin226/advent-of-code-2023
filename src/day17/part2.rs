@@ -1,12 +1,16 @@
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fmt::Formatter;
-use std::ops::Index;
+use std::ops::Range;
 
 use itertools::Itertools;
 use priority_queue::PriorityQueue;
 
 use crate::common::get_input;
+use crate::day17::part2::Direction::{Down, Left, Right, Up};
+use crate::day17::part2::NodeVariant::Init;
+
+const SAFE_TURN_DIST: Range<u8> = 4..10;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum Direction {
@@ -29,29 +33,14 @@ impl std::fmt::Debug for Position {
     }
 }
 
+/// Holds historical data on how far we've traveled in a particular direction.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum NodeVariant {
     Init,
-    U1,
-    U2,
-    U3,
-    R1,
-    R2,
-    R3,
-    D1,
-    D2,
-    D3,
-    L1,
-    L2,
-    L3,
-}
-
-impl Index<NodeVariant> for [usize; 12] {
-    type Output = usize;
-
-    fn index(&self, node_variant: NodeVariant) -> &Self::Output {
-        &self[node_variant as usize]
-    }
+    U(u8),
+    R(u8),
+    D(u8),
+    L(u8),
 }
 
 #[derive(Debug)]
@@ -120,34 +109,35 @@ impl Graph {
         use NodeVariant::*;
         use Direction::*;
         match (start_variant, direction) {
+            // Init
+            (Init, Up) => Some(U(1)),
+            (Init, Right) => Some(R(1)),
+            (Init, Down) => Some(D(1)),
+            (Init, Left) => Some(L(1)),
+
             // Up
-            (U1, Up) => Some(U2),
-            (U2, Up) => Some(U3),
-            (U3, Up) => None,
-            (U1, Down) | (U2, Down) | (U3, Down) => None,
+            (U(dist), Up) => if SAFE_TURN_DIST.contains(&dist) { Some(U(dist + 1)) } else { None },
+            (U(dist), Right) => if SAFE_TURN_DIST.contains(&dist) { Some(R(1)) } else { None },
+            (U(_), Down) => None,
+            (U(dist), Left) => if SAFE_TURN_DIST.contains(&dist) { Some(L(1)) } else { None },
 
             // Right
-            (R1, Right) => Some(R2),
-            (R2, Right) => Some(R3),
-            (R3, Right) => None,
-            (R1, Left) | (R2, Left) | (R3, Left) => None,
+            (R(dist), Up) => if SAFE_TURN_DIST.contains(&dist) { Some(U(1)) } else { None },
+            (R(dist), Right) => if SAFE_TURN_DIST.contains(&dist) { Some(R(dist + 1)) } else { None },
+            (R(dist), Down) => if SAFE_TURN_DIST.contains(&dist) { Some(D(1)) } else { None },
+            (R(_), Left) => None,
 
             // Down
-            (D1, Down) => Some(D2),
-            (D2, Down) => Some(D3),
-            (D3, Down) => None,
-            (D1, Up) | (D2, Up) | (D3, Up) => None,
+            (D(_), Up) => None,
+            (D(dist), Right) => if SAFE_TURN_DIST.contains(&dist) { Some(R(1)) } else { None },
+            (D(dist), Down) => if SAFE_TURN_DIST.contains(&dist) { Some(D(dist + 1)) } else { None },
+            (D(dist), Left) => if SAFE_TURN_DIST.contains(&dist) { Some(L(1)) } else { None },
 
             // Left
-            (L1, Left) => Some(L2),
-            (L2, Left) => Some(L3),
-            (L3, Left) => None,
-            (L1, Right) | (L2, Right) | (L3, Right) => None,
-
-            (_, Up) => Some(U1),
-            (_, Right) => Some(R1),
-            (_, Down) => Some(D1),
-            (_, Left) => Some(L1),
+            (L(dist), Up) => if SAFE_TURN_DIST.contains(&dist) { Some(U(1)) } else { None },
+            (L(_), Right) => None,
+            (L(dist), Down) => if SAFE_TURN_DIST.contains(&dist) { Some(D(1)) } else { None },
+            (L(dist), Left) => if SAFE_TURN_DIST.contains(&dist) { Some(L(dist + 1)) } else { None },
         }
     }
 
@@ -223,7 +213,7 @@ impl Graph {
 }
 
 pub fn run() {
-    let input = get_input("src/day17/input1.txt");
+    let input = get_input("src/day17/input0.txt");
     let graph = Box::new(Graph::new(&input));
     let start_pos = Position {
         row: 0,
