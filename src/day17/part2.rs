@@ -6,6 +6,8 @@ use itertools::Itertools;
 use priority_queue::PriorityQueue;
 
 use crate::common::get_input;
+use crate::day17::part2::Direction::{Down, Left, Right, Up};
+use crate::day17::part2::NodeVariant::{D, Init, L, R, U};
 
 const MIN_DIST_BEFORE_TURN: u8 = 4;
 const MAX_STRAIGHT_DIST: u8 = 10;
@@ -39,6 +41,78 @@ enum NodeVariant {
     R(u8),
     D(u8),
     L(u8),
+}
+
+impl NodeVariant {
+    fn can_turn(&self) -> bool {
+        use NodeVariant::*;
+        match self {
+            Init => true,
+            U(dist) | R(dist) | D(dist) | L(dist) => {
+                *dist >= MIN_DIST_BEFORE_TURN
+            }
+        }
+    }
+
+    fn can_continue_straight(&self) -> bool {
+        use NodeVariant::*;
+        match self {
+            Init => false,
+            U(dist) | R(dist) | D(dist) | L(dist) => {
+                *dist < MAX_STRAIGHT_DIST
+            }
+        }
+    }
+
+    fn turn(direction: Direction) -> Self {
+        match direction {
+            Up => U(1),
+            Right => R(1),
+            Down => D(1),
+            Left => L(1)
+        }
+    }
+
+    fn try_continue_straight(&self) -> Option<Self> {
+        if !self.can_continue_straight() {
+            return None;
+        }
+
+        use NodeVariant::*;
+        Some(match self {
+            Init => panic!("Init cannot continue straight"),
+            U(dist) => U(dist + 1),
+            R(dist) => R(dist + 1),
+            D(dist) => D(dist + 1),
+            L(dist) => L(dist + 1),
+        })
+    }
+
+    fn try_move(&self, direction: Direction) -> Option<Self> {
+        use NodeVariant::*;
+        use Direction::*;
+        match (self, direction) {
+            // Init
+            (Init, direction) => Some(Self::turn(direction)),
+
+            // 180 degrees - never allowed
+            (U(_), Down) | (R(_), Left) | (D(_), Up) | (L(_), Right) => None,
+
+            // Continuing straight
+            (U(dist), Up) | (R(dist), Right) | (D(dist), Down) | (L(dist), Left) => self.try_continue_straight(),
+
+            // 90 degrees
+            _ => self.try_turn(direction)
+        }
+    }
+
+    fn try_turn(&self, direction: Direction) -> Option<Self> {
+        if self.can_turn() {
+            Some(Self::turn(direction))
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -106,39 +180,7 @@ impl Graph {
     }
 
     fn next_variant(&self, start_variant: NodeVariant, direction: Direction) -> Option<NodeVariant> {
-        use NodeVariant::*;
-        use Direction::*;
-        match (start_variant, direction) {
-            // Init
-            (Init, Up) => Some(U(1)),
-            (Init, Right) => Some(R(1)),
-            (Init, Down) => Some(D(1)),
-            (Init, Left) => Some(L(1)),
-
-            // Up
-            (U(dist), Up) => if dist >= MIN_DIST_BEFORE_TURN { Some(U(dist + 1)) } else { None },
-            (U(dist), Right) => if dist >= MIN_DIST_BEFORE_TURN { Some(R(1)) } else { None },
-            (U(_), Down) => None,
-            (U(dist), Left) => if dist < MAX_STRAIGHT_DIST { Some(L(1)) } else { None },
-
-            // Right
-            (R(dist), Up) => if dist >= MIN_DIST_BEFORE_TURN { Some(U(1)) } else { None },
-            (R(dist), Right) => if dist < MAX_STRAIGHT_DIST { Some(R(dist + 1)) } else { None },
-            (R(dist), Down) => if dist >= MIN_DIST_BEFORE_TURN { Some(D(1)) } else { None },
-            (R(_), Left) => None,
-
-            // Down
-            (D(_), Up) => None,
-            (D(dist), Right) => if dist >= MIN_DIST_BEFORE_TURN { Some(R(1)) } else { None },
-            (D(dist), Down) => if dist < MAX_STRAIGHT_DIST { Some(D(dist + 1)) } else { None },
-            (D(dist), Left) => if dist >= MIN_DIST_BEFORE_TURN { Some(L(1)) } else { None },
-
-            // Left
-            (L(dist), Up) => if dist >= MIN_DIST_BEFORE_TURN { Some(U(1)) } else { None },
-            (L(_), Right) => None,
-            (L(dist), Down) => if dist >= crate::day17::part2::MIN_DIST_BEFORE_TURN { Some(D(1)) } else { None },
-            (L(dist), Left) => if dist < crate::day17::part2::MAX_STRAIGHT_DIST { Some(L(dist + 1)) } else { None },
-        }
+        start_variant.try_move(direction)
     }
 
     fn get_neighbors(&self, start_position: &Position) -> Vec<Position> {
@@ -188,15 +230,10 @@ impl Graph {
             // println!("current={:?}", current);
             if (current.row, current.col) == self.goal() {
                 // Found path to goal
-                // But path must have gone at least 4 to stop use NodeVariant::*;
-                match current.variant {
-                    NodeVariant::U(dist) | NodeVariant::D(dist) | NodeVariant::L(dist) | NodeVariant::R(dist) => {
-                        if dist >= MIN_DIST_BEFORE_TURN {
-                            return self.reconstruct_path(&came_from, &current);
-                        }
-                    }
-                    _ => {}
-                };
+                // But path must be able to turn in order to stop
+                if current.variant.can_turn() {
+                    return self.reconstruct_path(&came_from, &current);
+                }
             }
 
             for neighbor in self.get_neighbors(&current) {
@@ -227,7 +264,7 @@ pub fn run() {
     let start_pos = Position {
         row: 0,
         col: 0,
-        variant: NodeVariant::Init,
+        variant: Init,
     };
     let ans = graph.a_star(&start_pos);
     println!("{ans}");
