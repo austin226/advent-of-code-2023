@@ -178,8 +178,13 @@ impl Graph {
     }
 
     fn reconstruct_path(&self, came_from: &HashMap<Position, Position>, current: &Position) -> u64 {
-        // TODO
-        0
+        let mut current = current;
+        let mut total = self.node_at(current.row, current.col).unwrap().heat_loss as u64;
+        while came_from.contains_key(current) {
+            current = &came_from[current];
+            total += self.node_at(current.row, current.col).unwrap().heat_loss as u64;
+        }
+        total
     }
 
     fn a_star(&self, start_pos: &Position, goal: (usize, usize)) -> u64 {
