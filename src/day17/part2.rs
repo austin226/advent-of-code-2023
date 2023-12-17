@@ -44,20 +44,22 @@ enum NodeVariant {
 
 #[derive(Debug)]
 struct Graph {
-    size: usize,
+    height: usize,
+    width: usize,
     matrix: Vec<Vec<u64>>,
 }
 
 impl Graph {
     fn new(input: &Vec<String>) -> Self {
-        let size = input.len();
+        let height = input.len();
+        let width = input[0].len();
         let matrix: Vec<Vec<u64>> = input.iter().enumerate().map(|(row, row_str)| {
-            assert_eq!(size, row_str.len(), "Matrix must be square");
+            assert_eq!(width, row_str.len(), "Matrix must be rectangular");
             row_str.chars().enumerate().map(|(col, c)| {
                 c.to_digit(10).expect("Parsing a digit") as u64
             }).collect_vec()
         }).collect_vec();
-        Self { size, matrix }
+        Self { height, width, matrix }
     }
 
     fn next_position(&self, start: Position, direction: Direction) -> Option<Position> {
@@ -81,14 +83,14 @@ impl Graph {
                 }
             }
             Right => {
-                if col == self.size - 1 {
+                if col == self.width - 1 {
                     None
                 } else {
                     Some((row, col + 1))
                 }
             }
             Down => {
-                if row == self.size - 1 {
+                if row == self.height - 1 {
                     None
                 } else {
                     Some((row + 1, col))
@@ -208,7 +210,7 @@ impl Graph {
     }
 
     fn goal(&self) -> (usize, usize) {
-        (self.size - 1, self.size - 1)
+        (self.height - 1, self.width - 1)
     }
 }
 
