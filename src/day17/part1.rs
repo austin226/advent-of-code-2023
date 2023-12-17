@@ -197,7 +197,7 @@ impl Graph {
         let mut current = current;
         let mut total = self.get_heat(current);
         while came_from.contains_key(current) {
-            println!("{:?}-{:?}", current, self.get_heat(current));
+            // println!("{:?}-{:?}", current, self.get_heat(current));
             current = &came_from[current];
             total += self.get_heat(current);
         }
@@ -216,7 +216,7 @@ impl Graph {
 
         while !open_pq.is_empty() {
             let (current, _) = open_pq.pop().expect("Pop");
-            println!("current={:?}", current);
+            // println!("current={:?}", current);
             if current.row == goal.0 && current.col == goal.1 {
                 // Found path to goal
                 return self.reconstruct_path(&came_from, &current);
@@ -244,7 +244,7 @@ impl Graph {
 }
 
 pub fn run() {
-    let input = get_input("src/day17/input0.txt");
+    let input = get_input("src/day17/input1.txt");
     let graph = Box::new(Graph::new(&input));
     let start_pos = Position {
         row: 0,
