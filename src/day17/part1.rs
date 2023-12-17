@@ -54,35 +54,18 @@ impl Index<NodeVariant> for [usize; 12] {
 }
 
 #[derive(Debug)]
-struct Node {
-    row: usize,
-    col: usize,
-    heat_loss: u8,
-    variants: [NodeVariant; 12],
-}
-
-impl Node {
-    fn new(row: usize, col: usize, heat_loss: u8) -> Self {
-        use NodeVariant::*;
-        let variants = [U1, U2, U3, R1, R2, R3, D1, D2, D3, L1, L2, L3];
-        Self { row, col, heat_loss, variants }
-    }
-}
-
-#[derive(Debug)]
 struct Graph {
     size: usize,
-    matrix: Vec<Vec<Node>>,
+    matrix: Vec<Vec<u64>>,
 }
 
 impl Graph {
     fn new(input: &Vec<String>) -> Self {
         let size = input.len();
-        let matrix: Vec<Vec<Node>> = input.iter().enumerate().map(|(row, row_str)| {
+        let matrix: Vec<Vec<u64>> = input.iter().enumerate().map(|(row, row_str)| {
             assert_eq!(size, row_str.len(), "Matrix must be square");
             row_str.chars().enumerate().map(|(col, c)| {
-                let heat_loss = c.to_digit(10).expect("Parsing a digit") as u8;
-                Node::new(row, col, heat_loss)
+                c.to_digit(10).expect("Parsing a digit") as u64
             }).collect_vec()
         }).collect_vec();
         Self { size, matrix }
@@ -94,8 +77,8 @@ impl Graph {
         Some(Position { row: next_row, col: next_col, variant: next_variant })
     }
 
-    fn node_at(&self, row: usize, col: usize) -> Option<&Node> {
-        self.matrix.get(row)?.get(col)
+    fn heat_loss_at(&self, position: &Position) ->u64 {
+        self.matrix[position.row][position.col]
     }
 
     fn next_point(&self, row: usize, col: usize, direction: Direction) -> Option<(usize, usize)> {
@@ -189,20 +172,16 @@ impl Graph {
         ((max_row - min_row) + (max_col - min_col)) as u64
     }
 
-    fn get_heat(&self, position: &Position) -> u64 {
-        self.node_at(position.row, position.col).unwrap().heat_loss as u64
-    }
-
     fn reconstruct_path(&self, came_from: &HashMap<Position, Position>, current: &Position) -> u64 {
         let mut current = current;
-        let mut total = self.get_heat(current);
+        let mut total = self.heat_loss_at(current);
         while came_from.contains_key(current) {
-            // println!("{:?}-{:?}", current, self.get_heat(current));
+            println!("{:?}-{:?}", current, self.heat_loss_at(current));
             current = &came_from[current];
-            total += self.get_heat(current);
+            total += self.heat_loss_at(current);
         }
         // Don't include first item
-        total - self.node_at(current.row, current.col).unwrap().heat_loss as u64
+        total - self.heat_loss_at(current)
     }
 
     fn a_star(&self, start_pos: &Position, goal: (usize, usize)) -> u64 {
@@ -223,10 +202,10 @@ impl Graph {
             }
 
             for neighbor in self.get_neighbors(&current) {
-                let edge_weight = self.node_at(neighbor.row, neighbor.col).unwrap_or_else(|| panic!("Node ({},{}) not found", neighbor.row, neighbor.col)).heat_loss;
+                let edge_weight = self.heat_loss_at(&neighbor);
                 let tentative_g_score = g_score.get(&current);
                 if let Some(&tentative_g_score) = tentative_g_score {
-                    let tentative_g_score = tentative_g_score + edge_weight as u64;
+                    let tentative_g_score = tentative_g_score + edge_weight;
                     let neighbor_g_score = g_score.get(&neighbor);
                     if neighbor_g_score.is_none() || tentative_g_score < *neighbor_g_score.unwrap() {
                         // This is the best path to neighbor
