@@ -1,6 +1,9 @@
+use std::cmp::Reverse;
+use std::collections::HashMap;
 use std::ops::Index;
 
 use itertools::Itertools;
+use priority_queue::PriorityQueue;
 
 use crate::common::get_input;
 
@@ -12,13 +15,14 @@ enum Direction {
     Left,
 }
 
-#[derive(Clone, Copy)]
-struct Position<'n> {
-    node: &'n Node,
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Position {
+    row: usize,
+    col: usize,
     variant: NodeVariant,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum NodeVariant {
     U1,
     U2,
@@ -77,11 +81,10 @@ impl Graph {
         Self { size, matrix }
     }
 
-    fn next_node(&self, start: Position, direction: Direction) -> Option<Position> {
-        let (next_row, next_col) = self.next_point(start.node.row, start.node.col, direction)?;
-        let next_node = self.node_at(next_row, next_col)?;
+    fn next_position(&self, start: Position, direction: Direction) -> Option<Position> {
+        let (next_row, next_col) = self.next_point(start.row, start.col, direction)?;
         let next_variant = self.next_variant(start.variant, direction)?;
-        Some(Position { node: next_node, variant: next_variant })
+        Some(Position { row: next_row, col: next_col, variant: next_variant })
     }
 
     fn node_at(&self, row: usize, col: usize) -> Option<&Node> {
@@ -151,14 +154,82 @@ impl Graph {
             (_, Left) => Some(L1),
         }
     }
+
+    fn get_neighbors(&self, start_position: &Position) -> Vec<Position> {
+        let mut neighbors = Vec::new();
+
+        use Direction::*;
+        for direction in [Up, Right, Down, Left] {
+            if let Some((next_row, next_col)) = self.next_point(start_position.row, start_position.col, direction) {
+                if let Some(next_variant) = self.next_variant(start_position.variant, direction) {
+                    neighbors.push(Position { row: next_row, col: next_col, variant: next_variant });
+                }
+            }
+        }
+        neighbors
+    }
+
+    fn heuristic(&self, start: (usize, usize), goal: (usize, usize)) -> u64 {
+        let max_row = std::cmp::max(start.0, goal.0);
+        let min_row = std::cmp::min(start.0, goal.0);
+        let max_col = std::cmp::max(start.1, goal.1);
+        let min_col = std::cmp::min(start.1, goal.1);
+        ((max_row - min_row) + (max_col - min_col)) as u64
+    }
+
+    fn reconstruct_path(&self, came_from: &HashMap<Position, Position>, current: &Position) -> u64 {
+        // TODO
+        0
+    }
+
+    fn a_star(&self, start_pos: &Position, goal: (usize, usize)) -> u64 {
+        let mut open_pq = PriorityQueue::<Position, Reverse<u64>>::new();
+        open_pq.push(*start_pos, Reverse(0));
+
+        let mut came_from = HashMap::<Position, Position>::new();
+
+        let mut g_score = HashMap::new();
+        g_score.insert(*start_pos, 0u64);
+
+        let mut f_score = HashMap::new();
+        f_score.insert(*start_pos, self.heuristic((start_pos.row, start_pos.col), goal));
+
+        while !open_pq.is_empty() {
+            let (current, _) = open_pq.pop().expect("Pop");
+            if current.row == goal.0 && current.col == goal.1 {
+                // Found path to goal
+                return self.reconstruct_path(&came_from, &current);
+            }
+
+            for neighbor in self.get_neighbors(&current) {
+                let edge_weight = self.node_at(neighbor.row, neighbor.col).unwrap_or_else(|| panic!("Node ({},{}) not found", neighbor.row, neighbor.col)).heat_loss;
+                let tentative_g_score = g_score.get(&current);
+                if let Some(&tentative_g_score) = tentative_g_score {
+                    let neighbor_g_score = g_score.get(&neighbor);
+                    if neighbor_g_score.is_none() || tentative_g_score < *neighbor_g_score.unwrap() {
+                        // This is the best path to neighbor
+                        came_from.insert(neighbor, current);
+                        g_score.insert(neighbor, tentative_g_score);
+
+                        let neighbor_f_score = tentative_g_score + self.heuristic((neighbor.row, neighbor.col), goal);
+                        f_score.insert(neighbor, neighbor_f_score);
+                        open_pq.push(neighbor, Reverse(neighbor_f_score));
+                    }
+                }
+            }
+        }
+        0
+    }
 }
 
 pub fn run() {
     let input = get_input("src/day17/input0.txt");
     let graph = Box::new(Graph::new(&input));
     let start_pos = Position {
-        node: graph.node_at(0, 0).expect("starting node"),
+        row: 0,
+        col: 0,
         variant: NodeVariant::U1,
     };
-    // println!("{:?}", graph);
+    let ans = graph.a_star(&start_pos, (graph.size - 1, graph.size - 1));
+    println!("{ans}");
 }
