@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use indicatif::ProgressBar;
 use itertools::Itertools;
 use rayon::prelude::*;
