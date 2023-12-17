@@ -184,13 +184,17 @@ impl Graph {
         ((max_row - min_row) + (max_col - min_col)) as u64
     }
 
+    fn get_heat(&self, position: &Position) -> u64 {
+        self.node_at(position.row, position.col).unwrap().heat_loss as u64
+    }
+
     fn reconstruct_path(&self, came_from: &HashMap<Position, Position>, current: &Position) -> u64 {
         let mut current = current;
-        let mut total = self.node_at(current.row, current.col).unwrap().heat_loss as u64;
+        let mut total = self.get_heat(current);
         while came_from.contains_key(current) {
-            println!("{:?}", current);
+            println!("{:?}-{:?}", current, self.get_heat(current));
             current = &came_from[current];
-            total += self.node_at(current.row, current.col).unwrap().heat_loss as u64;
+            total += self.get_heat(current);
         }
         // Don't include first item
         total - self.node_at(current.row, current.col).unwrap().heat_loss as u64
@@ -205,11 +209,9 @@ impl Graph {
         let mut g_score = HashMap::new();
         g_score.insert(*start_pos, 0u64);
 
-        let mut f_score = HashMap::new();
-        f_score.insert(*start_pos, self.heuristic((start_pos.row, start_pos.col), goal));
-
         while !open_pq.is_empty() {
             let (current, _) = open_pq.pop().expect("Pop");
+            println!("current={:?}", current);
             if current.row == goal.0 && current.col == goal.1 {
                 // Found path to goal
                 return self.reconstruct_path(&came_from, &current);
@@ -219,6 +221,7 @@ impl Graph {
                 let edge_weight = self.node_at(neighbor.row, neighbor.col).unwrap_or_else(|| panic!("Node ({},{}) not found", neighbor.row, neighbor.col)).heat_loss;
                 let tentative_g_score = g_score.get(&current);
                 if let Some(&tentative_g_score) = tentative_g_score {
+                    let tentative_g_score = tentative_g_score + edge_weight as u64;
                     let neighbor_g_score = g_score.get(&neighbor);
                     if neighbor_g_score.is_none() || tentative_g_score < *neighbor_g_score.unwrap() {
                         // This is the best path to neighbor
@@ -226,7 +229,6 @@ impl Graph {
                         g_score.insert(neighbor, tentative_g_score);
 
                         let neighbor_f_score = tentative_g_score + self.heuristic((neighbor.row, neighbor.col), goal);
-                        f_score.insert(neighbor, neighbor_f_score);
                         open_pq.push(neighbor, Reverse(neighbor_f_score));
                     }
                 }
