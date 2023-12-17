@@ -77,7 +77,7 @@ impl Graph {
         Some(Position { row: next_row, col: next_col, variant: next_variant })
     }
 
-    fn heat_loss_at(&self, position: &Position) ->u64 {
+    fn heat_loss_at(&self, position: &Position) -> u64 {
         self.matrix[position.row][position.col]
     }
 
@@ -164,12 +164,10 @@ impl Graph {
         neighbors
     }
 
-    fn heuristic(&self, start: (usize, usize), goal: (usize, usize)) -> u64 {
-        let max_row = std::cmp::max(start.0, goal.0);
-        let min_row = std::cmp::min(start.0, goal.0);
-        let max_col = std::cmp::max(start.1, goal.1);
-        let min_col = std::cmp::min(start.1, goal.1);
-        ((max_row - min_row) + (max_col - min_col)) as u64
+    fn heuristic(&self, start_pos: &Position) -> u64 {
+        // Assume goal is to bottom-right of, or equal to Position
+        let goal = self.goal();
+        ((goal.0 - start_pos.row) + (goal.1 - start_pos.col)) as u64
     }
 
     fn reconstruct_path(&self, came_from: &HashMap<Position, Position>, current: &Position) -> u64 {
@@ -184,7 +182,7 @@ impl Graph {
         total - self.heat_loss_at(current)
     }
 
-    fn a_star(&self, start_pos: &Position, goal: (usize, usize)) -> u64 {
+    fn a_star(&self, start_pos: &Position) -> u64 {
         let mut open_pq = PriorityQueue::<Position, Reverse<u64>>::new();
         open_pq.push(*start_pos, Reverse(0));
 
@@ -196,29 +194,30 @@ impl Graph {
         while !open_pq.is_empty() {
             let (current, _) = open_pq.pop().expect("Pop");
             // println!("current={:?}", current);
-            if current.row == goal.0 && current.col == goal.1 {
+            if (current.row, current.col) == self.goal() {
                 // Found path to goal
                 return self.reconstruct_path(&came_from, &current);
             }
 
             for neighbor in self.get_neighbors(&current) {
-                let edge_weight = self.heat_loss_at(&neighbor);
-                let tentative_g_score = g_score.get(&current);
-                if let Some(&tentative_g_score) = tentative_g_score {
-                    let tentative_g_score = tentative_g_score + edge_weight;
-                    let neighbor_g_score = g_score.get(&neighbor);
-                    if neighbor_g_score.is_none() || tentative_g_score < *neighbor_g_score.unwrap() {
+                if let Some(&tentative_g_score) = g_score.get(&current) {
+                    let tentative_g_score = tentative_g_score + self.heat_loss_at(&neighbor);
+                    if g_score.get(&neighbor).map_or(true, |g| tentative_g_score < *g) {
                         // This is the best path to neighbor
                         came_from.insert(neighbor, current);
                         g_score.insert(neighbor, tentative_g_score);
-
-                        let neighbor_f_score = tentative_g_score + self.heuristic((neighbor.row, neighbor.col), goal);
+                        let h = self.heuristic(&neighbor);
+                        let neighbor_f_score = tentative_g_score + h;
                         open_pq.push(neighbor, Reverse(neighbor_f_score));
                     }
                 }
             }
         }
         panic!("Failed to find a path");
+    }
+
+    fn goal(&self) -> (usize, usize) {
+        (self.size - 1, self.size - 1)
     }
 }
 
@@ -230,6 +229,6 @@ pub fn run() {
         col: 0,
         variant: NodeVariant::U1,
     };
-    let ans = graph.a_star(&start_pos, (graph.size - 1, graph.size - 1));
+    let ans = graph.a_star(&start_pos);
     println!("{ans}");
 }
