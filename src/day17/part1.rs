@@ -7,6 +7,7 @@ use itertools::Itertools;
 use priority_queue::PriorityQueue;
 
 use crate::common::get_input;
+use crate::day17::part1::Direction::{Down, Right, Up};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum Direction {
@@ -140,24 +141,29 @@ impl Graph {
             (U1, Up) => Some(U2),
             (U2, Up) => Some(U3),
             (U3, Up) => None,
-            (_, Up) => Some(U1),
+            (U1, Down) | (U2, Down) | (U3, Down) => None,
 
             // Right
             (R1, Right) => Some(R2),
             (R2, Right) => Some(R3),
             (R3, Right) => None,
-            (_, Right) => Some(R1),
+            (R1, Left) | (R2, Left) | (R3, Left) => None,
 
             // Down
             (D1, Down) => Some(D2),
             (D2, Down) => Some(D3),
             (D3, Down) => None,
-            (_, Down) => Some(D1),
+            (D1, Up) | (D2, Up) | (D3, Up) => None,
 
             // Left
             (L1, Left) => Some(L2),
             (L2, Left) => Some(L3),
             (L3, Left) => None,
+            (L1, Right) | (L2, Right) | (L3, Right) => None,
+
+            (_, Up) => Some(U1),
+            (_, Right) => Some(R1),
+            (_, Down) => Some(D1),
             (_, Left) => Some(L1),
         }
     }
