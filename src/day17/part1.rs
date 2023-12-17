@@ -3,8 +3,6 @@ use std::ops::Index;
 use itertools::Itertools;
 
 use crate::common::get_input;
-use crate::day17::part1::Direction::{Down, Left, Right, Up};
-use crate::day17::part1::NodeVariant::{D1, D2, L1, L2, R1, R2, R3, U1, U2, U3};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum Direction {
