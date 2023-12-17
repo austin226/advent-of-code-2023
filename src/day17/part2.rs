@@ -222,7 +222,7 @@ impl Graph {
 }
 
 pub fn run() {
-    let input = get_input("src/day17/input3.txt");
+    let input = get_input("src/day17/input1.txt");
     let graph = Box::new(Graph::new(&input));
     let start_pos = Position {
         row: 0,
