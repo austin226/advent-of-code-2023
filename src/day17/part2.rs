@@ -208,7 +208,7 @@ impl Graph {
         let mut current = current;
         let mut total = self.heat_loss_at(current);
         while came_from.contains_key(current) {
-            println!("{:?}-{:?}", current, self.heat_loss_at(current));
+            // println!("{:?}-{:?}", current, self.heat_loss_at(current));
             current = &came_from[current];
             total += self.heat_loss_at(current);
         }
