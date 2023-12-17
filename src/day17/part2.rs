@@ -1,7 +1,6 @@
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fmt::Formatter;
-use std::ops::Range;
 
 use itertools::Itertools;
 use priority_queue::PriorityQueue;
@@ -167,7 +166,7 @@ impl Graph {
         let mut current = current;
         let mut total = self.heat_loss_at(current);
         while came_from.contains_key(current) {
-            // println!("{:?}-{:?}", current, self.heat_loss_at(current));
+            println!("{:?}-{:?}", current, self.heat_loss_at(current));
             current = &came_from[current];
             total += self.heat_loss_at(current);
         }
@@ -189,7 +188,15 @@ impl Graph {
             // println!("current={:?}", current);
             if (current.row, current.col) == self.goal() {
                 // Found path to goal
-                return self.reconstruct_path(&came_from, &current);
+                // But path must have gone at least 4 to stop use NodeVariant::*;
+                match current.variant {
+                    NodeVariant::U(dist) | NodeVariant::D(dist) | NodeVariant::L(dist) | NodeVariant::R(dist) => {
+                        if dist >= MIN_DIST_BEFORE_TURN {
+                            return self.reconstruct_path(&came_from, &current);
+                        }
+                    }
+                    _ => {}
+                };
             }
 
             for neighbor in self.get_neighbors(&current) {
@@ -215,7 +222,7 @@ impl Graph {
 }
 
 pub fn run() {
-    let input = get_input("src/day17/input0.txt");
+    let input = get_input("src/day17/input3.txt");
     let graph = Box::new(Graph::new(&input));
     let start_pos = Position {
         row: 0,
