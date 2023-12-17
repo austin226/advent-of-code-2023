@@ -7,7 +7,6 @@ use itertools::Itertools;
 use priority_queue::PriorityQueue;
 
 use crate::common::get_input;
-use crate::day17::part1::Direction::{Down, Right, Up};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum Direction {
