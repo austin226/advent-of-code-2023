@@ -7,10 +7,9 @@ use itertools::Itertools;
 use priority_queue::PriorityQueue;
 
 use crate::common::get_input;
-use crate::day17::part2::Direction::{Down, Left, Right, Up};
-use crate::day17::part2::NodeVariant::Init;
 
-const SAFE_TURN_DIST: Range<u8> = 4..10;
+const MIN_DIST_BEFORE_TURN: u8 = 4;
+const MAX_STRAIGHT_DIST: u8 = 10;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum Direction {
@@ -116,28 +115,28 @@ impl Graph {
             (Init, Left) => Some(L(1)),
 
             // Up
-            (U(dist), Up) => if SAFE_TURN_DIST.contains(&dist) { Some(U(dist + 1)) } else { None },
-            (U(dist), Right) => if SAFE_TURN_DIST.contains(&dist) { Some(R(1)) } else { None },
+            (U(dist), Up) => if dist >= MIN_DIST_BEFORE_TURN { Some(U(dist + 1)) } else { None },
+            (U(dist), Right) => if dist >= MIN_DIST_BEFORE_TURN { Some(R(1)) } else { None },
             (U(_), Down) => None,
-            (U(dist), Left) => if SAFE_TURN_DIST.contains(&dist) { Some(L(1)) } else { None },
+            (U(dist), Left) => if dist < MAX_STRAIGHT_DIST { Some(L(1)) } else { None },
 
             // Right
-            (R(dist), Up) => if SAFE_TURN_DIST.contains(&dist) { Some(U(1)) } else { None },
-            (R(dist), Right) => if SAFE_TURN_DIST.contains(&dist) { Some(R(dist + 1)) } else { None },
-            (R(dist), Down) => if SAFE_TURN_DIST.contains(&dist) { Some(D(1)) } else { None },
+            (R(dist), Up) => if dist >= MIN_DIST_BEFORE_TURN { Some(U(1)) } else { None },
+            (R(dist), Right) => if dist < MAX_STRAIGHT_DIST { Some(R(dist + 1)) } else { None },
+            (R(dist), Down) => if dist >= MIN_DIST_BEFORE_TURN { Some(D(1)) } else { None },
             (R(_), Left) => None,
 
             // Down
             (D(_), Up) => None,
-            (D(dist), Right) => if SAFE_TURN_DIST.contains(&dist) { Some(R(1)) } else { None },
-            (D(dist), Down) => if SAFE_TURN_DIST.contains(&dist) { Some(D(dist + 1)) } else { None },
-            (D(dist), Left) => if SAFE_TURN_DIST.contains(&dist) { Some(L(1)) } else { None },
+            (D(dist), Right) => if dist >= MIN_DIST_BEFORE_TURN { Some(R(1)) } else { None },
+            (D(dist), Down) => if dist < MAX_STRAIGHT_DIST { Some(D(dist + 1)) } else { None },
+            (D(dist), Left) => if dist >= MIN_DIST_BEFORE_TURN { Some(L(1)) } else { None },
 
             // Left
-            (L(dist), Up) => if SAFE_TURN_DIST.contains(&dist) { Some(U(1)) } else { None },
+            (L(dist), Up) => if dist >= MIN_DIST_BEFORE_TURN { Some(U(1)) } else { None },
             (L(_), Right) => None,
-            (L(dist), Down) => if SAFE_TURN_DIST.contains(&dist) { Some(D(1)) } else { None },
-            (L(dist), Left) => if SAFE_TURN_DIST.contains(&dist) { Some(L(dist + 1)) } else { None },
+            (L(dist), Down) => if dist >= crate::day17::part2::MIN_DIST_BEFORE_TURN { Some(D(1)) } else { None },
+            (L(dist), Left) => if dist < crate::day17::part2::MAX_STRAIGHT_DIST { Some(L(dist + 1)) } else { None },
         }
     }
 
@@ -152,6 +151,7 @@ impl Graph {
                 }
             }
         }
+        // println!("from {:?}, neighbors are {:?}", start_position, neighbors);
         neighbors
     }
 
