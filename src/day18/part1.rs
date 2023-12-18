@@ -1,8 +1,12 @@
+use bmp::{px, Image, Pixel};
 use std::hash::Hash;
 
 use itertools::Itertools;
 
 use crate::common::get_input;
+
+const IN_FILE: &str = "src/day18/input0.txt";
+const OUT_FILE: &str = "src/day18/output0.bmp";
 
 #[derive(Clone, Copy, Debug)]
 enum Direction {
@@ -114,7 +118,15 @@ impl Map {
             bitmap[bitmap_index] = Some(color);
         }
 
-        println!("{:?}", bitmap);
+        // Actually draw a bitmap for debugging
+        let mut img = Image::new(width as u32, height as u32);
+        for (x, y) in img.coordinates() {
+            if let Some(color) = bitmap[x as usize + (y as usize) * width] {
+                img.set_pixel(x, y, px!(color.r, color.g, color.b));
+            }
+        }
+        let _ = img.save(OUT_FILE);
+        // println!("{:?}", bitmap);
 
         // TODO rasterize with colors
         // TODO find area of interior
@@ -165,7 +177,7 @@ impl Worker {
 }
 
 pub fn run() {
-    let input = get_input("src/day18/input0.txt");
+    let input = get_input(IN_FILE);
 
     let mut map = Map::new();
     let mut worker = Worker::new(Map::start_coord());
