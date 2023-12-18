@@ -90,8 +90,15 @@ impl Bitmap {
 }
 
 #[derive(Debug)]
+struct VectorPoint {
+    coord: Coord,
+    color: Color,
+    is_border: bool,
+}
+
+#[derive(Debug)]
 struct VectorImage {
-    points: Vec<(Color, Coord)>,
+    points: Vec<VectorPoint>,
     bottom_left: Coord,
     top_right: Coord,
 }
@@ -104,7 +111,7 @@ impl VectorImage {
             bottom_left: start_coord,
             top_right: start_coord,
         };
-        new_svg.add_point(start_coord, Color::new(DEFAULT_COLOR));
+        new_svg.add_border_point(start_coord, Color::new(DEFAULT_COLOR));
         new_svg
     }
 
@@ -112,7 +119,7 @@ impl VectorImage {
         Coord::new(0, 0)
     }
 
-    fn add_point(&mut self, coord: Coord, color: Color) {
+    fn add_border_point(&mut self, coord: Coord, color: Color) {
         // Expand bounding box
         self.bottom_left.x = std::cmp::min(self.bottom_left.x, coord.x);
         self.bottom_left.y = std::cmp::max(self.bottom_left.y, coord.y);
@@ -120,7 +127,12 @@ impl VectorImage {
         self.top_right.y = std::cmp::min(self.top_right.y, coord.y);
 
         // Store the point
-        self.points.push((color, coord));
+        let point = VectorPoint {
+            coord,
+            color,
+            is_border: true,
+        };
+        self.points.push(point);
     }
 
     fn rasterize(&self) -> Bitmap {
@@ -132,7 +144,8 @@ impl VectorImage {
         let mut bitmap = vec![None; width * height];
 
         // Draw border
-        for (color, coord) in self.points.iter() {
+        for vector_point in self.points.iter() {
+            let coord = vector_point.coord;
             assert!(coord.x >= self.bottom_left.x);
             assert!(coord.x <= self.top_right.x);
             assert!(coord.y <= self.bottom_left.y);
@@ -141,7 +154,7 @@ impl VectorImage {
             let rasterized_x = (coord.x - self.bottom_left.x) as usize;
             let rasterized_y = (coord.y - self.top_right.y) as usize;
             let bitmap_index = rasterized_y * width + rasterized_x;
-            bitmap[bitmap_index] = Some(*color);
+            bitmap[bitmap_index] = Some(vector_point.color);
         }
 
         Bitmap {
@@ -195,7 +208,7 @@ impl VectorDrawer {
     fn perform_step(&mut self, step: &LineSegment, svg: &mut VectorImage) {
         for i in 0..(step.distance) {
             let next_coord = self.location.next(step.direction);
-            svg.add_point(next_coord, step.color);
+            svg.add_border_point(next_coord, step.color);
             self.location = next_coord;
         }
     }
