@@ -1,12 +1,12 @@
-use bmp::{px, Image, Pixel};
 use std::hash::Hash;
 
+use bmp::{px, Image, Pixel};
 use itertools::Itertools;
 
 use crate::common::get_input;
 
-const IN_FILE: &str = "src/day18/input1.txt";
-const OUT_FILE: &str = "src/day18/output1.bmp";
+const IN_FILE: &str = "src/day18/input0.txt";
+const OUT_FILE: &str = "src/day18/output0.bmp";
 
 #[derive(Clone, Copy, Debug)]
 enum Direction {
@@ -69,14 +69,32 @@ impl Coord {
     }
 }
 
+struct Bitmap {
+    width: u32,
+    height: u32,
+    pixels: Vec<Option<Color>>,
+}
+
+impl Bitmap {
+    fn render(&self, output_file: &str) {
+        let mut img = Image::new(self.width, self.height);
+        for (x, y) in img.coordinates() {
+            if let Some(color) = self.pixels[x as usize + (y * self.width) as usize] {
+                img.set_pixel(x, y, px!(color.r, color.g, color.b));
+            }
+        }
+        let _ = img.save(output_file);
+    }
+}
+
 #[derive(Debug)]
-struct Map {
+struct VectorImage {
     points: Vec<(Color, Coord)>,
     bottom_left: Coord,
     top_right: Coord,
 }
 
-impl Map {
+impl VectorImage {
     fn new() -> Self {
         let start_coord = Self::start_coord();
         let mut new_map = Self {
@@ -103,7 +121,7 @@ impl Map {
         self.points.push((color, coord));
     }
 
-    fn rasterize(&self) -> Vec<Option<Color>> {
+    fn rasterize(&self) -> Bitmap {
         assert!(self.top_right.x > self.bottom_left.x);
         assert!(self.bottom_left.y > self.top_right.y);
         let width = (self.top_right.x - self.bottom_left.x + 1) as usize;
@@ -121,23 +139,15 @@ impl Map {
             let rasterized_x = (coord.x - self.bottom_left.x) as usize;
             let rasterized_y = (coord.y - self.top_right.y) as usize;
             let bitmap_index = rasterized_y * width + rasterized_x;
-            bitmap[bitmap_index] = Some(color);
+            bitmap[bitmap_index] = Some(*color);
         }
 
-        // Actually draw a bitmap for debugging
-        let mut img = Image::new(width as u32, height as u32);
-        for (x, y) in img.coordinates() {
-            if let Some(color) = bitmap[x as usize + (y as usize) * width] {
-                img.set_pixel(x, y, px!(color.r, color.g, color.b));
-            }
+        Bitmap {
+            pixels: bitmap,
+            width: width as u32,
+            height: height as u32,
         }
-        let _ = img.save(OUT_FILE);
-        // println!("{:?}", bitmap);
-
-        // TODO rasterize with colors
         // TODO find area of interior
-        // TODO
-        vec![]
     }
 }
 
@@ -180,7 +190,7 @@ impl Worker {
         }
     }
 
-    fn perform_step(&mut self, step: &Step, map: &mut Map) {
+    fn perform_step(&mut self, step: &Step, map: &mut VectorImage) {
         for i in 0..(step.distance) {
             let next_coord = self.location.next(step.direction);
             map.add_point(next_coord, step.color);
@@ -192,14 +202,14 @@ impl Worker {
 pub fn run() {
     let input = get_input(IN_FILE);
 
-    let mut map = Map::new();
-    let mut worker = Worker::new(Map::start_coord());
+    let mut svg = VectorImage::new();
+    let mut worker = Worker::new(VectorImage::start_coord());
     let steps = input.iter().map(|line| line.as_str()).map(Step::new);
     for step in steps {
-        worker.perform_step(&step, &mut map);
+        worker.perform_step(&step, &mut svg);
     }
-
-    map.rasterize();
+    let bitmap = svg.rasterize();
+    bitmap.render(OUT_FILE);
 
     // println!("{:?}", map);
 }
