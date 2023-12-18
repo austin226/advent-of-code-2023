@@ -1,7 +1,9 @@
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 use bmp::{px, Image, Pixel};
 use itertools::Itertools;
+use queues::*;
 
 use crate::common::get_input;
 
@@ -9,8 +11,9 @@ const IN_FILE: &str = "src/day18/input0.txt";
 const OUT_FILE: &str = "src/day18/output0.bmp";
 
 const DEFAULT_COLOR: &str = "#000000";
+const FILL_COLOR: &str = "#ffffff";
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Direction {
     U,
     R,
@@ -26,6 +29,26 @@ impl Direction {
             "D" => Direction::D,
             "L" => Direction::L,
             _ => panic!("Bad direction {input}"),
+        }
+    }
+
+    fn turn_90_cw(&self) -> Self {
+        use Direction::*;
+        match self {
+            U => R,
+            R => D,
+            D => L,
+            L => U,
+        }
+    }
+
+    fn turn_180(&self) -> Self {
+        use Direction::*;
+        match self {
+            U => D,
+            R => L,
+            D => U,
+            L => R,
         }
     }
 }
@@ -69,6 +92,16 @@ impl Coord {
             Direction::L => Self::new(self.x - 1, self.y),
         }
     }
+
+    fn direction_to_neighbor(&self, other: Coord) -> Direction {
+        match (other.x - self.x, other.y - self.y) {
+            (0, -1) => Direction::U,
+            (1, 0) => Direction::R,
+            (0, 1) => Direction::D,
+            (-1, 0) => Direction::L,
+            _ => panic!("{:?} is not a neighbor of {:?}", other, self),
+        }
+    }
 }
 
 struct Bitmap {
@@ -98,7 +131,7 @@ struct VectorPoint {
 
 #[derive(Debug)]
 struct VectorImage {
-    points: Vec<VectorPoint>,
+    points: HashMap<Coord, VectorPoint>,
     bottom_left: Coord,
     top_right: Coord,
 }
@@ -107,7 +140,7 @@ impl VectorImage {
     fn new() -> Self {
         let start_coord = Self::start_coord();
         let mut new_svg = Self {
-            points: Vec::new(),
+            points: HashMap::new(),
             bottom_left: start_coord,
             top_right: start_coord,
         };
@@ -132,7 +165,110 @@ impl VectorImage {
             color,
             is_border: true,
         };
-        self.points.push(point);
+        self.points.insert(coord, point);
+    }
+
+    fn add_interior_point(&mut self, coord: Coord, color: Color) {
+        let point = VectorPoint {
+            coord,
+            color,
+            is_border: false,
+        };
+        self.points.insert(coord, point);
+    }
+
+    fn get_edge_neighbors(&self, coord: Coord) -> Vec<Coord> {
+        use Direction::*;
+        let mut neighbors = Vec::new();
+        for direction in [U, R, D, L] {
+            if let Some(neighbor) = self.points.get(&coord.next(direction)) {
+                neighbors.push(neighbor.coord);
+            }
+        }
+        debug_assert_eq!(2, neighbors.len(), "Polygon is not connected");
+        neighbors
+    }
+
+    fn get_non_edge_neighbors(&self, coord: Coord) -> Vec<Coord> {
+        use Direction::*;
+        let mut neighbors = Vec::new();
+        for direction in [U, R, D, L] {
+            let neighbor_coord = coord.next(direction);
+            if self.points.get(&neighbor_coord).is_none() {
+                neighbors.push(neighbor_coord);
+            }
+        }
+        neighbors
+    }
+
+    fn is_in_bounds(&self, coord: Coord) -> bool {
+        (self.bottom_left.x..=self.top_right.x).contains(&coord.x)
+            && (self.top_right.y..=self.bottom_left.y).contains(&coord.y)
+    }
+
+    /// Try to fill a polygon starting with a non-edge Coord.
+    /// If we hit the edge of the bounding box, stop and return None.
+    /// Otherwise, return all the coordinates inside the polygon.
+    fn try_fill(&self, start: Coord) -> Option<Vec<Coord>> {
+        let mut res = Vec::new();
+
+        let mut visited = HashSet::<Coord>::new();
+        let mut q: Queue<Coord> = queue![];
+        let _ = q.add(start);
+        while q.size() > 0 {
+            let v = q.remove().unwrap();
+            res.push(v);
+            visited.insert(v);
+            for u in self.get_non_edge_neighbors(v) {
+                if !self.is_in_bounds(u) {
+                    // Out of bounds - not inside the polygon
+                    return None;
+                }
+                if !visited.contains(&u) {
+                    let _ = q.add(u);
+                }
+            }
+        }
+
+        Some(res)
+    }
+
+    fn get_fill_coords(&self) -> Vec<Coord> {
+        assert!(self.points.len() >= 8, "Not enough points to fill polygon");
+
+        // Advance until we're on an edge point (not a corner)
+        let mut coord = self.points.get(&Self::start_coord()).unwrap().coord;
+        let mut neighbors = self.get_edge_neighbors(coord);
+        while coord.direction_to_neighbor(neighbors[0])
+            != coord.direction_to_neighbor(neighbors[1]).turn_180()
+        {
+            // This is a corner
+            coord = neighbors[0];
+            neighbors = self.get_edge_neighbors(coord);
+        }
+
+        // 2 neighbors - this is on an edge
+        debug_assert_eq!(2, neighbors.len());
+        let neighbor = neighbors[0];
+        let edge_dir = coord.direction_to_neighbor(neighbor);
+
+        // Try filling in this direction
+        // If we hit the edge of the bounding box, try the other potential direction
+        let non_edge_dir = edge_dir.turn_90_cw();
+        let non_edge_coord = coord.next(non_edge_dir);
+        self.try_fill(non_edge_coord).unwrap_or_else(|| {
+            // Try again with other non-edge coord
+            let other_non_edge_coord = coord.next(non_edge_dir.turn_180());
+            self.try_fill(other_non_edge_coord)
+                .expect("Failed to fill in either direction")
+        })
+    }
+
+    fn fill_polygon(&mut self, fill_color: Color) {
+        let fill_coords = self.get_fill_coords();
+        for f in fill_coords {
+            self.add_interior_point(f, fill_color);
+        }
     }
 
     fn rasterize(&self) -> Bitmap {
@@ -144,8 +280,7 @@ impl VectorImage {
         let mut bitmap = vec![None; width * height];
 
         // Draw border
-        for vector_point in self.points.iter() {
-            let coord = vector_point.coord;
+        for (coord, vector_point) in self.points.iter() {
             assert!(coord.x >= self.bottom_left.x);
             assert!(coord.x <= self.top_right.x);
             assert!(coord.y <= self.bottom_left.y);
@@ -162,7 +297,6 @@ impl VectorImage {
             width: width as u32,
             height: height as u32,
         }
-        // TODO find area of interior
     }
 }
 
@@ -206,7 +340,7 @@ impl VectorDrawer {
     }
 
     fn perform_step(&mut self, step: &LineSegment, svg: &mut VectorImage) {
-        for i in 0..(step.distance) {
+        for i in 0..step.distance {
             let next_coord = self.location.next(step.direction);
             svg.add_border_point(next_coord, step.color);
             self.location = next_coord;
@@ -217,6 +351,8 @@ impl VectorDrawer {
 pub fn run() {
     let input = get_input(IN_FILE);
 
+    // Assume data draws a polygon that does not intersect with itself, and
+    // that no two edge segments are touching.
     let mut svg = VectorImage::new();
     let mut worker = VectorDrawer::new(VectorImage::start_coord());
     input
@@ -226,6 +362,7 @@ pub fn run() {
         .for_each(|step| {
             worker.perform_step(&step, &mut svg);
         });
+    svg.fill_polygon(Color::new(FILL_COLOR));
     let bitmap = svg.rasterize();
     bitmap.render(OUT_FILE);
 
