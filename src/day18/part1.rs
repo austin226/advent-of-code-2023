@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::hash::Hash;
+
 use itertools::Itertools;
 
 use crate::common::get_input;
@@ -29,13 +32,30 @@ struct Color {
 
 impl Color {
     fn new(input: &str) -> Self {
+        // TODO
         Self { r: 0, g: 0, b: 0 }
     }
 }
 
+#[derive(Clone, Copy, PartialOrd, PartialEq, Eq, Hash)]
 struct Coord {
     x: i32,
     y: i32,
+}
+
+impl Coord {
+    fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
+
+    fn next(&self, direction: &Direction) -> Self {
+        match direction {
+            Direction::U => Self::new(self.x, self.y + 1),
+            Direction::R => Self::new(self.x + 1, self.y),
+            Direction::D => Self::new(self.x, self.y - 1),
+            Direction::L => Self::new(self.x - 1, self.y),
+        }
+    }
 }
 
 struct Tile {
@@ -44,12 +64,22 @@ struct Tile {
 }
 
 struct Map {
-    tiles: Vec<Vec<Tile>>,
+    tiles: HashMap<Coord, Tile>,
 }
 
 impl Map {
     fn new() -> Self {
-        Self { tiles: Vec::new() }
+        let mut hash_map = HashMap::new();
+        let start_tile = Tile {
+            coord: Self::start_coord(),
+            color: Color::new("#000000"),
+        };
+        hash_map.insert(Self::start_coord(), start_tile);
+        Self { tiles: hash_map }
+    }
+
+    fn start_coord() -> Coord {
+        Coord::new(0, 0)
     }
 }
 
@@ -78,21 +108,27 @@ struct Worker {
 }
 
 impl Worker {
-    fn new() -> Self {
+    fn new(start_coord: Coord) -> Self {
         Self {
-            location: Coord { x: 0, y: 0 },
+            location: start_coord,
         }
     }
 
-    fn perform_step(&self, step: &Step, map: &mut Map) {}
+    fn perform_step(&self, step: &Step, map: &mut Map) {
+        // let tiles_in_step = Vec::new();
+        // for i in 0..(step.distance) {
+        //
+        // }
+    }
 }
 
 pub fn run() {
     let input = get_input("src/day18/input0.txt");
 
-    let worker = Worker::new();
-    let map = Map::new();
+    let mut map = Map::new();
+    let worker = Worker::new(Map::start_coord());
     let steps = input.iter().map(|line| line.as_str()).map(Step::new);
-
-    for step in steps {}
+    for step in steps {
+        worker.perform_step(&step, &mut map);
+    }
 }
