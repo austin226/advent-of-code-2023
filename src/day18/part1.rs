@@ -5,6 +5,7 @@ use itertools::Itertools;
 
 use crate::common::get_input;
 
+#[derive(Clone, Copy, Debug)]
 enum Direction {
     U,
     R,
@@ -24,6 +25,7 @@ impl Direction {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 struct Color {
     r: u8,
     g: u8,
@@ -37,7 +39,7 @@ impl Color {
     }
 }
 
-#[derive(Clone, Copy, PartialOrd, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Eq, Hash)]
 struct Coord {
     x: i32,
     y: i32,
@@ -48,7 +50,7 @@ impl Coord {
         Self { x, y }
     }
 
-    fn next(&self, direction: &Direction) -> Self {
+    fn next(&self, direction: Direction) -> Self {
         match direction {
             Direction::U => Self::new(self.x, self.y + 1),
             Direction::R => Self::new(self.x + 1, self.y),
@@ -58,31 +60,37 @@ impl Coord {
     }
 }
 
+#[derive(Debug)]
 struct Tile {
     coord: Coord,
     color: Color,
 }
 
+#[derive(Debug)]
 struct Map {
     tiles: HashMap<Coord, Tile>,
 }
 
 impl Map {
     fn new() -> Self {
-        let mut hash_map = HashMap::new();
-        let start_tile = Tile {
-            coord: Self::start_coord(),
-            color: Color::new("#000000"),
+        let mut new_map = Self {
+            tiles: HashMap::new(),
         };
-        hash_map.insert(Self::start_coord(), start_tile);
-        Self { tiles: hash_map }
+        new_map.add_tile(Self::start_coord(), Color::new("#000000"));
+        new_map
     }
 
     fn start_coord() -> Coord {
         Coord::new(0, 0)
     }
+
+    fn add_tile(&mut self, coord: Coord, color: Color) {
+        let tile = Tile { coord, color };
+        self.tiles.insert(coord, tile);
+    }
 }
 
+#[derive(Debug)]
 struct Step {
     direction: Direction,
     distance: i32,
@@ -114,11 +122,12 @@ impl Worker {
         }
     }
 
-    fn perform_step(&self, step: &Step, map: &mut Map) {
-        // let tiles_in_step = Vec::new();
-        // for i in 0..(step.distance) {
-        //
-        // }
+    fn perform_step(&mut self, step: &Step, map: &mut Map) {
+        for i in 0..(step.distance) {
+            let next_coord = self.location.next(step.direction);
+            map.add_tile(next_coord, step.color);
+            self.location = next_coord;
+        }
     }
 }
 
@@ -126,9 +135,11 @@ pub fn run() {
     let input = get_input("src/day18/input0.txt");
 
     let mut map = Map::new();
-    let worker = Worker::new(Map::start_coord());
+    let mut worker = Worker::new(Map::start_coord());
     let steps = input.iter().map(|line| line.as_str()).map(Step::new);
     for step in steps {
         worker.perform_step(&step, &mut map);
     }
+
+    println!("{:?}", map);
 }
