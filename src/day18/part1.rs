@@ -7,8 +7,8 @@ use queues::*;
 
 use crate::common::get_input;
 
-const IN_FILE: &str = "src/day18/input0.txt";
-const OUT_FILE: &str = "src/day18/output0.bmp";
+const IN_FILE: &str = "src/day18/input1.txt";
+const OUT_FILE: &str = "src/day18/output1.bmp";
 
 const DEFAULT_COLOR: &str = "#000000";
 const FILL_COLOR: &str = "#ffffff";
@@ -363,8 +363,10 @@ pub fn run() {
             worker.perform_step(&step, &mut svg);
         });
     svg.fill_polygon(Color::new(FILL_COLOR));
-    let bitmap = svg.rasterize();
-    bitmap.render(OUT_FILE);
 
-    // println!("{:?}", map);
+    // let bitmap = svg.rasterize();
+    // bitmap.render(OUT_FILE);
+
+    let area = svg.points.len();
+    println!("Area: {area}");
 }
