@@ -1,12 +1,12 @@
 use bmp::{px, Image, Pixel};
 use std::hash::Hash;
 
-use itertools::{interleave, Itertools};
+use itertools::Itertools;
 
 use crate::common::get_input;
 
-const IN_FILE: &str = "src/day18/input0.txt";
-const OUT_FILE: &str = "src/day18/output0.bmp";
+const IN_FILE: &str = "src/day18/input1.txt";
+const OUT_FILE: &str = "src/day18/output1.bmp";
 
 #[derive(Clone, Copy, Debug)]
 enum Direction {
