@@ -328,18 +328,18 @@ impl LineSegment {
     }
 }
 
-struct VectorDrawer {
+struct VectorPainter {
     location: Coord,
 }
 
-impl VectorDrawer {
+impl VectorPainter {
     fn new(start_coord: Coord) -> Self {
         Self {
             location: start_coord,
         }
     }
 
-    fn perform_step(&mut self, step: &LineSegment, svg: &mut VectorImage) {
+    fn paint(&mut self, step: &LineSegment, svg: &mut VectorImage) {
         for i in 0..step.distance {
             let next_coord = self.location.next(step.direction);
             svg.add_border_point(next_coord, step.color);
@@ -354,13 +354,13 @@ pub fn run() {
     // Assume data draws a polygon that does not intersect with itself, and
     // that no two edge segments are touching.
     let mut svg = VectorImage::new();
-    let mut worker = VectorDrawer::new(VectorImage::start_coord());
+    let mut painter = VectorPainter::new(VectorImage::start_coord());
     input
         .iter()
         .map(|line| line.as_str())
         .map(LineSegment::new)
-        .for_each(|step| {
-            worker.perform_step(&step, &mut svg);
+        .for_each(|seg| {
+            painter.paint(&seg, &mut svg);
         });
     svg.fill_polygon(Color::new(FILL_COLOR));
 
