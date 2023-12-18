@@ -1,17 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
-use bmp::{px, Image, Pixel};
 use itertools::Itertools;
 use queues::*;
 
 use crate::common::get_input;
 
-const IN_FILE: &str = "src/day18/input1.txt";
-const OUT_FILE: &str = "src/day18/output1.bmp";
-
-const DEFAULT_COLOR: &str = "#000000";
-const FILL_COLOR: &str = "#ffffff";
+const IN_FILE: &str = "src/day18/input0.txt";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Direction {
@@ -53,26 +48,6 @@ impl Direction {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
-struct Color {
-    r: u8,
-    g: u8,
-    b: u8,
-}
-
-impl Color {
-    fn new(input: &str) -> Self {
-        let input = input.strip_prefix('#').unwrap_or(input);
-        let decoded_string = hex::decode(input).unwrap();
-        assert_eq!(3, decoded_string.len(), "Expected 3 hexes in RGB code");
-        Self {
-            r: decoded_string[0],
-            g: decoded_string[1],
-            b: decoded_string[2],
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 struct Coord {
     x: i32,
@@ -104,28 +79,9 @@ impl Coord {
     }
 }
 
-struct Bitmap {
-    width: u32,
-    height: u32,
-    pixels: Vec<Option<Color>>,
-}
-
-impl Bitmap {
-    fn render(&self, output_file: &str) {
-        let mut img = Image::new(self.width, self.height);
-        for (x, y) in img.coordinates() {
-            if let Some(color) = self.pixels[x as usize + (y * self.width) as usize] {
-                img.set_pixel(x, y, px!(color.r, color.g, color.b));
-            }
-        }
-        let _ = img.save(output_file);
-    }
-}
-
 #[derive(Debug)]
 struct VectorPoint {
     coord: Coord,
-    color: Color,
     is_border: bool,
 }
 
@@ -144,7 +100,7 @@ impl VectorImage {
             bottom_left: start_coord,
             top_right: start_coord,
         };
-        new_svg.add_border_point(start_coord, Color::new(DEFAULT_COLOR));
+        new_svg.add_border_point(start_coord);
         new_svg
     }
 
@@ -152,7 +108,7 @@ impl VectorImage {
         Coord::new(0, 0)
     }
 
-    fn add_border_point(&mut self, coord: Coord, color: Color) {
+    fn add_border_point(&mut self, coord: Coord) {
         // Expand bounding box
         self.bottom_left.x = std::cmp::min(self.bottom_left.x, coord.x);
         self.bottom_left.y = std::cmp::max(self.bottom_left.y, coord.y);
@@ -162,16 +118,14 @@ impl VectorImage {
         // Store the point
         let point = VectorPoint {
             coord,
-            color,
             is_border: true,
         };
         self.points.insert(coord, point);
     }
 
-    fn add_interior_point(&mut self, coord: Coord, color: Color) {
+    fn add_interior_point(&mut self, coord: Coord) {
         let point = VectorPoint {
             coord,
-            color,
             is_border: false,
         };
         self.points.insert(coord, point);
@@ -262,48 +216,12 @@ impl VectorImage {
                 .expect("Failed to fill in either direction")
         })
     }
-
-    fn fill_polygon(&mut self, fill_color: Color) {
-        let fill_coords = self.get_fill_coords();
-        for f in fill_coords {
-            self.add_interior_point(f, fill_color);
-        }
-    }
-
-    fn rasterize(&self) -> Bitmap {
-        assert!(self.top_right.x > self.bottom_left.x);
-        assert!(self.bottom_left.y > self.top_right.y);
-        let width = (self.top_right.x - self.bottom_left.x + 1) as usize;
-        let height = (self.bottom_left.y - self.top_right.y + 1) as usize;
-
-        let mut bitmap = vec![None; width * height];
-
-        // Draw border
-        for (coord, vector_point) in self.points.iter() {
-            assert!(coord.x >= self.bottom_left.x);
-            assert!(coord.x <= self.top_right.x);
-            assert!(coord.y <= self.bottom_left.y);
-            assert!(coord.y >= self.top_right.y);
-
-            let rasterized_x = (coord.x - self.bottom_left.x) as usize;
-            let rasterized_y = (coord.y - self.top_right.y) as usize;
-            let bitmap_index = rasterized_y * width + rasterized_x;
-            bitmap[bitmap_index] = Some(vector_point.color);
-        }
-
-        Bitmap {
-            pixels: bitmap,
-            width: width as u32,
-            height: height as u32,
-        }
-    }
 }
 
 #[derive(Debug)]
 struct LineSegment {
     direction: Direction,
     distance: i32,
-    color: Color,
 }
 
 impl LineSegment {
@@ -312,17 +230,9 @@ impl LineSegment {
         let direction = Direction::new(tokens[0]);
         let distance = tokens[1].parse::<i32>().unwrap();
 
-        let color = {
-            let color_str = tokens[2];
-            let color_str = color_str.strip_prefix('(').unwrap_or(color_str);
-            let color_str = color_str.strip_suffix(')').unwrap_or(color_str);
-            Color::new(color_str)
-        };
-
         Self {
             direction,
             distance,
-            color,
         }
     }
 }
@@ -341,7 +251,7 @@ impl VectorPainter {
     fn paint(&mut self, step: &LineSegment, svg: &mut VectorImage) {
         for i in 0..step.distance {
             let next_coord = self.location.next(step.direction);
-            svg.add_border_point(next_coord, step.color);
+            svg.add_border_point(next_coord);
             self.location = next_coord;
         }
     }
@@ -361,10 +271,7 @@ pub fn run() {
         .for_each(|seg| {
             painter.paint(&seg, &mut svg);
         });
-    svg.fill_polygon(Color::new(FILL_COLOR));
-
-    let bitmap = svg.rasterize();
-    bitmap.render(OUT_FILE);
+    // svg.fill_polygon(Color::new(FILL_COLOR));
 
     let area = svg.points.len();
     println!("Area: {area}");
