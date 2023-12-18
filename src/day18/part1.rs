@@ -8,6 +8,8 @@ use crate::common::get_input;
 const IN_FILE: &str = "src/day18/input0.txt";
 const OUT_FILE: &str = "src/day18/output0.bmp";
 
+const DEFAULT_COLOR: &str = "#000000";
+
 #[derive(Clone, Copy, Debug)]
 enum Direction {
     U,
@@ -97,13 +99,13 @@ struct VectorImage {
 impl VectorImage {
     fn new() -> Self {
         let start_coord = Self::start_coord();
-        let mut new_map = Self {
+        let mut new_svg = Self {
             points: Vec::new(),
             bottom_left: start_coord,
             top_right: start_coord,
         };
-        new_map.add_point(start_coord, Color::new("#000000"));
-        new_map
+        new_svg.add_point(start_coord, Color::new(DEFAULT_COLOR));
+        new_svg
     }
 
     fn start_coord() -> Coord {
@@ -152,13 +154,13 @@ impl VectorImage {
 }
 
 #[derive(Debug)]
-struct Step {
+struct LineSegment {
     direction: Direction,
     distance: i32,
     color: Color,
 }
 
-impl Step {
+impl LineSegment {
     fn new(input: &str) -> Self {
         let tokens = input.split_ascii_whitespace().collect_vec();
         let direction = Direction::new(tokens[0]);
@@ -179,21 +181,21 @@ impl Step {
     }
 }
 
-struct Worker {
+struct VectorDrawer {
     location: Coord,
 }
 
-impl Worker {
+impl VectorDrawer {
     fn new(start_coord: Coord) -> Self {
         Self {
             location: start_coord,
         }
     }
 
-    fn perform_step(&mut self, step: &Step, map: &mut VectorImage) {
+    fn perform_step(&mut self, step: &LineSegment, svg: &mut VectorImage) {
         for i in 0..(step.distance) {
             let next_coord = self.location.next(step.direction);
-            map.add_point(next_coord, step.color);
+            svg.add_point(next_coord, step.color);
             self.location = next_coord;
         }
     }
@@ -203,11 +205,14 @@ pub fn run() {
     let input = get_input(IN_FILE);
 
     let mut svg = VectorImage::new();
-    let mut worker = Worker::new(VectorImage::start_coord());
-    let steps = input.iter().map(|line| line.as_str()).map(Step::new);
-    for step in steps {
-        worker.perform_step(&step, &mut svg);
-    }
+    let mut worker = VectorDrawer::new(VectorImage::start_coord());
+    input
+        .iter()
+        .map(|line| line.as_str())
+        .map(LineSegment::new)
+        .for_each(|step| {
+            worker.perform_step(&step, &mut svg);
+        });
     let bitmap = svg.rasterize();
     bitmap.render(OUT_FILE);
 
