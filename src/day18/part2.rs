@@ -1,12 +1,16 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
+use std::ops::Shl;
 
 use itertools::Itertools;
+use once_cell::sync::Lazy;
 use queues::*;
+use regex::Regex;
 
 use crate::common::get_input;
 
 const IN_FILE: &str = "src/day18/input0.txt";
+static LINE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r".*\(#(.....)(.)\)").unwrap());
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Direction {
@@ -17,12 +21,12 @@ enum Direction {
 }
 
 impl Direction {
-    fn new(input: &str) -> Self {
+    fn new(input: u8) -> Self {
         match input {
-            "U" => Direction::U,
-            "R" => Direction::R,
-            "D" => Direction::D,
-            "L" => Direction::L,
+            0 => Direction::R,
+            1 => Direction::D,
+            2 => Direction::L,
+            3 => Direction::U,
             _ => panic!("Bad direction {input}"),
         }
     }
@@ -221,18 +225,32 @@ impl VectorImage {
 #[derive(Debug)]
 struct LineSegment {
     direction: Direction,
-    distance: i32,
+    distance: i64,
 }
 
 impl LineSegment {
     fn new(input: &str) -> Self {
+        let re = &LINE_REGEX;
+        let caps = re.captures(input).unwrap();
+        let dist_hex = caps.get(1).unwrap().as_str();
+        let dist_hex = format!("0{}", dist_hex);
+        let decoded_dist = hex::decode(dist_hex).unwrap();
+        debug_assert_eq!(3, decoded_dist.len(), "Expected 3 hex bytes in dist");
+        let distance: u64 = (decoded_dist[0] as u64).shl(16)
+            + (decoded_dist[1] as u64).shl(8)
+            + (decoded_dist[2] as u64);
+
+        let dir_hex = caps.get(2).unwrap().as_str();
+        let dir_hex = format!("0{}", dir_hex);
+        let decoded_dir = hex::decode(dir_hex).unwrap();
+        debug_assert_eq!(1, decoded_dir.len(), "Expected 1 hex byte in dir");
+
         let tokens = input.split_ascii_whitespace().collect_vec();
-        let direction = Direction::new(tokens[0]);
-        let distance = tokens[1].parse::<i32>().unwrap();
+        let direction = Direction::new(decoded_dir[0]);
 
         Self {
             direction,
-            distance,
+            distance: distance as i64,
         }
     }
 }
