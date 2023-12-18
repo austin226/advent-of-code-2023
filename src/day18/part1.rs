@@ -69,14 +69,19 @@ struct Tile {
 #[derive(Debug)]
 struct Map {
     tiles: HashMap<Coord, Tile>,
+    top_left: Coord,
+    bottom_right: Coord,
 }
 
 impl Map {
     fn new() -> Self {
+        let start_coord = Self::start_coord();
         let mut new_map = Self {
             tiles: HashMap::new(),
+            top_left: start_coord,
+            bottom_right: start_coord,
         };
-        new_map.add_tile(Self::start_coord(), Color::new("#000000"));
+        new_map.add_tile(start_coord, Color::new("#000000"));
         new_map
     }
 
@@ -86,6 +91,14 @@ impl Map {
 
     fn add_tile(&mut self, coord: Coord, color: Color) {
         let tile = Tile { coord, color };
+
+        // Expand bounding box
+        self.top_left.x = std::cmp::min(self.top_left.x, coord.x);
+        self.top_left.y = std::cmp::max(self.top_left.y, coord.y);
+        self.bottom_right.x = std::cmp::max(self.bottom_right.x, coord.x);
+        self.bottom_right.y = std::cmp::min(self.bottom_right.y, coord.y);
+
+        // Store the tile
         self.tiles.insert(coord, tile);
     }
 }
