@@ -1,7 +1,7 @@
 use bmp::{px, Image, Pixel};
 use std::hash::Hash;
 
-use itertools::Itertools;
+use itertools::{interleave, Itertools};
 
 use crate::common::get_input;
 
@@ -37,8 +37,14 @@ struct Color {
 
 impl Color {
     fn new(input: &str) -> Self {
-        // TODO
-        Self { r: 0, g: 0, b: 0 }
+        let input = input.strip_prefix('#').unwrap_or(input);
+        let decoded_string = hex::decode(input).unwrap();
+        assert_eq!(3, decoded_string.len(), "Expected 3 hexes in RGB code");
+        Self {
+            r: decoded_string[0],
+            g: decoded_string[1],
+            b: decoded_string[2],
+        }
     }
 }
 
@@ -147,7 +153,14 @@ impl Step {
         let tokens = input.split_ascii_whitespace().collect_vec();
         let direction = Direction::new(tokens[0]);
         let distance = tokens[1].parse::<i32>().unwrap();
-        let color = Color::new(tokens[2]);
+
+        let color = {
+            let color_str = tokens[2];
+            let color_str = color_str.strip_prefix('(').unwrap_or(color_str);
+            let color_str = color_str.strip_suffix(')').unwrap_or(color_str);
+            Color::new(color_str)
+        };
+
         Self {
             direction,
             distance,
