@@ -61,9 +61,9 @@ impl Coord {
 
     fn next(&self, direction: Direction) -> Self {
         match direction {
-            Direction::U => Self::new(self.x, self.y + 1),
+            Direction::U => Self::new(self.x, self.y - 1),
             Direction::R => Self::new(self.x + 1, self.y),
-            Direction::D => Self::new(self.x, self.y - 1),
+            Direction::D => Self::new(self.x, self.y + 1),
             Direction::L => Self::new(self.x - 1, self.y),
         }
     }
@@ -72,8 +72,8 @@ impl Coord {
 #[derive(Debug)]
 struct Map {
     points: Vec<(Color, Coord)>,
-    top_left: Coord,
-    bottom_right: Coord,
+    bottom_left: Coord,
+    top_right: Coord,
 }
 
 impl Map {
@@ -81,8 +81,8 @@ impl Map {
         let start_coord = Self::start_coord();
         let mut new_map = Self {
             points: Vec::new(),
-            top_left: start_coord,
-            bottom_right: start_coord,
+            bottom_left: start_coord,
+            top_right: start_coord,
         };
         new_map.add_point(start_coord, Color::new("#000000"));
         new_map
@@ -94,32 +94,32 @@ impl Map {
 
     fn add_point(&mut self, coord: Coord, color: Color) {
         // Expand bounding box
-        self.top_left.x = std::cmp::min(self.top_left.x, coord.x);
-        self.top_left.y = std::cmp::max(self.top_left.y, coord.y);
-        self.bottom_right.x = std::cmp::max(self.bottom_right.x, coord.x);
-        self.bottom_right.y = std::cmp::min(self.bottom_right.y, coord.y);
+        self.bottom_left.x = std::cmp::min(self.bottom_left.x, coord.x);
+        self.bottom_left.y = std::cmp::max(self.bottom_left.y, coord.y);
+        self.top_right.x = std::cmp::max(self.top_right.x, coord.x);
+        self.top_right.y = std::cmp::min(self.top_right.y, coord.y);
 
         // Store the point
         self.points.push((color, coord));
     }
 
     fn rasterize(&self) -> Vec<Option<Color>> {
-        assert!(self.bottom_right.x > self.top_left.x);
-        assert!(self.top_left.y > self.bottom_right.y);
-        let width = (self.bottom_right.x - self.top_left.x + 1) as usize;
-        let height = (self.top_left.y - self.bottom_right.y + 1) as usize;
+        assert!(self.top_right.x > self.bottom_left.x);
+        assert!(self.bottom_left.y > self.top_right.y);
+        let width = (self.top_right.x - self.bottom_left.x + 1) as usize;
+        let height = (self.bottom_left.y - self.top_right.y + 1) as usize;
 
         let mut bitmap = vec![None; width * height];
 
         // Draw border
         for (color, coord) in self.points.iter() {
-            assert!(coord.x >= self.top_left.x);
-            assert!(coord.x <= self.bottom_right.x);
-            assert!(coord.y <= self.top_left.y);
-            assert!(coord.y >= self.bottom_right.y);
+            assert!(coord.x >= self.bottom_left.x);
+            assert!(coord.x <= self.top_right.x);
+            assert!(coord.y <= self.bottom_left.y);
+            assert!(coord.y >= self.top_right.y);
 
-            let rasterized_x = (coord.x - self.top_left.x) as usize;
-            let rasterized_y = (coord.y - self.bottom_right.y) as usize;
+            let rasterized_x = (coord.x - self.bottom_left.x) as usize;
+            let rasterized_y = (coord.y - self.top_right.y) as usize;
             let bitmap_index = rasterized_y * width + rasterized_x;
             bitmap[bitmap_index] = Some(color);
         }
