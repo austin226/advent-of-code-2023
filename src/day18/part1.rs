@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::hash::Hash;
 
 use itertools::Itertools;
@@ -25,7 +24,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 struct Color {
     r: u8,
     g: u8,
@@ -39,7 +38,7 @@ impl Color {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 struct Coord {
     x: i32,
     y: i32,
@@ -61,14 +60,8 @@ impl Coord {
 }
 
 #[derive(Debug)]
-struct Tile {
-    coord: Coord,
-    color: Color,
-}
-
-#[derive(Debug)]
 struct Map {
-    tiles: HashMap<Coord, Tile>,
+    points: Vec<(Color, Coord)>,
     top_left: Coord,
     bottom_right: Coord,
 }
@@ -77,11 +70,11 @@ impl Map {
     fn new() -> Self {
         let start_coord = Self::start_coord();
         let mut new_map = Self {
-            tiles: HashMap::new(),
+            points: Vec::new(),
             top_left: start_coord,
             bottom_right: start_coord,
         };
-        new_map.add_tile(start_coord, Color::new("#000000"));
+        new_map.add_point(start_coord, Color::new("#000000"));
         new_map
     }
 
@@ -89,17 +82,44 @@ impl Map {
         Coord::new(0, 0)
     }
 
-    fn add_tile(&mut self, coord: Coord, color: Color) {
-        let tile = Tile { coord, color };
-
+    fn add_point(&mut self, coord: Coord, color: Color) {
         // Expand bounding box
         self.top_left.x = std::cmp::min(self.top_left.x, coord.x);
         self.top_left.y = std::cmp::max(self.top_left.y, coord.y);
         self.bottom_right.x = std::cmp::max(self.bottom_right.x, coord.x);
         self.bottom_right.y = std::cmp::min(self.bottom_right.y, coord.y);
 
-        // Store the tile
-        self.tiles.insert(coord, tile);
+        // Store the point
+        self.points.push((color, coord));
+    }
+
+    fn rasterize(&self) -> Vec<Option<Color>> {
+        assert!(self.bottom_right.x > self.top_left.x);
+        assert!(self.top_left.y > self.bottom_right.y);
+        let width = (self.bottom_right.x - self.top_left.x + 1) as usize;
+        let height = (self.top_left.y - self.bottom_right.y + 1) as usize;
+
+        let mut bitmap = vec![None; width * height];
+
+        // Draw border
+        for (color, coord) in self.points.iter() {
+            assert!(coord.x >= self.top_left.x);
+            assert!(coord.x <= self.bottom_right.x);
+            assert!(coord.y <= self.top_left.y);
+            assert!(coord.y >= self.bottom_right.y);
+
+            let rasterized_x = (coord.x - self.top_left.x) as usize;
+            let rasterized_y = (coord.y - self.bottom_right.y) as usize;
+            let bitmap_index = rasterized_y * width + rasterized_x;
+            bitmap[bitmap_index] = Some(color);
+        }
+
+        println!("{:?}", bitmap);
+
+        // TODO rasterize with colors
+        // TODO find area of interior
+        // TODO
+        vec![]
     }
 }
 
@@ -138,7 +158,7 @@ impl Worker {
     fn perform_step(&mut self, step: &Step, map: &mut Map) {
         for i in 0..(step.distance) {
             let next_coord = self.location.next(step.direction);
-            map.add_tile(next_coord, step.color);
+            map.add_point(next_coord, step.color);
             self.location = next_coord;
         }
     }
@@ -154,5 +174,7 @@ pub fn run() {
         worker.perform_step(&step, &mut map);
     }
 
-    println!("{:?}", map);
+    map.rasterize();
+
+    // println!("{:?}", map);
 }
