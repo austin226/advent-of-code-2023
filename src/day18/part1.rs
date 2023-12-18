@@ -363,8 +363,8 @@ pub fn run() {
         });
     svg.fill_polygon(Color::new(FILL_COLOR));
 
-    // let bitmap = svg.rasterize();
-    // bitmap.render(OUT_FILE);
+    let bitmap = svg.rasterize();
+    bitmap.render(OUT_FILE);
 
     let area = svg.points.len();
     println!("Area: {area}");
