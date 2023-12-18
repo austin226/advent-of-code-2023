@@ -206,34 +206,33 @@ impl VectorImage {
             && (self.top_right.y..=self.bottom_left.y).contains(&coord.y)
     }
 
-    /// Try to fill a polygon starting with a non-edge Coord.
+    /// Try to flood fill a polygon starting with a non-edge Coord.
     /// If we hit the edge of the bounding box, stop and return None.
     /// Otherwise, return all the coordinates inside the polygon.
-    fn try_fill(&self, start: Coord) -> Option<Vec<Coord>> {
-        let mut res = Vec::new();
-
+    fn try_fill(&self, start: Coord) -> Option<HashSet<Coord>> {
         let mut visited = HashSet::<Coord>::new();
+        visited.insert(start);
         let mut q: Queue<Coord> = queue![];
         let _ = q.add(start);
         while q.size() > 0 {
             let v = q.remove().unwrap();
-            res.push(v);
-            visited.insert(v);
-            for u in self.get_non_edge_neighbors(v) {
-                if !self.is_in_bounds(u) {
-                    // Out of bounds - not inside the polygon
-                    return None;
-                }
+            if !self.is_in_bounds(v) {
+                // Out of bounds - not inside the polygon
+                return None;
+            }
+            let neighbors = self.get_non_edge_neighbors(v);
+            for u in neighbors {
                 if !visited.contains(&u) {
+                    visited.insert(u);
                     let _ = q.add(u);
                 }
             }
         }
 
-        Some(res)
+        Some(visited)
     }
 
-    fn get_fill_coords(&self) -> Vec<Coord> {
+    fn get_fill_coords(&self) -> HashSet<Coord> {
         assert!(self.points.len() >= 8, "Not enough points to fill polygon");
 
         // Advance until we're on an edge point (not a corner)
