@@ -1,15 +1,9 @@
-use itertools::Itertools;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
 use crate::common::get_input;
 
-static PART_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\{x=(\d+),m=(\d+),a=(\d+),s=(\d+)}").unwrap());
-static WORKFLOW_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"([a-z]+)\{([^}]*)}").unwrap());
-static RULE_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"([xmas])([<>])(\d+):(?:([a-z]+)|([AR]))|([a-z]+)|([AR])").unwrap());
-
+#[derive(Debug)]
 enum Attribute {
     X,
     M,
@@ -17,6 +11,19 @@ enum Attribute {
     S,
 }
 
+impl Attribute {
+    fn parse(attr_str: &str) -> Option<Attribute> {
+        match attr_str {
+            "x" => Some(Attribute::X),
+            "m" => Some(Attribute::M),
+            "a" => Some(Attribute::A),
+            "s" => Some(Attribute::S),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug)]
 struct Part {
     x: i32,
     m: i32,
@@ -26,7 +33,16 @@ struct Part {
 
 impl Part {
     fn parse(line: &str) -> Option<Self> {
-        todo!()
+        static PART_REGEX: Lazy<Regex> =
+            Lazy::new(|| Regex::new(r"\{x=(\d+),m=(\d+),a=(\d+),s=(\d+)}").unwrap());
+        let re = &PART_REGEX;
+        let caps = re.captures(line)?;
+        let x = caps.get(1)?.as_str().parse::<i32>().ok()?;
+        let m = caps.get(2)?.as_str().parse::<i32>().ok()?;
+        let a = caps.get(3)?.as_str().parse::<i32>().ok()?;
+        let s = caps.get(4)?.as_str().parse::<i32>().ok()?;
+
+        Some(Self { x, m, a, s })
     }
 
     fn get_attribute(&self, attribute: &Attribute) -> i32 {
@@ -39,6 +55,7 @@ impl Part {
     }
 }
 
+#[derive(Debug)]
 enum Condition {
     /// Condition always passes
     Always,
@@ -57,14 +74,16 @@ enum Condition {
 }
 
 /// Next workflow, or a terminal destination
+#[derive(Debug)]
 enum Destination {
     /// Terminal - either accept or reject the part
-    Terminal(bool),
+    Terminal { accept: bool },
 
-    /// Go to another workflow
-    Next(Box<Workflow>),
+    /// Go to another workflow by name
+    Next(String),
 }
 
+#[derive(Debug)]
 struct Rule {
     /// If condition passes, go to destination
     condition: Condition,
@@ -72,13 +91,131 @@ struct Rule {
     destination: Destination,
 }
 
+impl Rule {
+    fn parse(rule_str: &str) -> Option<Self> {
+        static RULE_REGEX: Lazy<Regex> = Lazy::new(|| {
+            Regex::new(r"([xmas])([<>])(\d+):(?:([a-z]+)|([AR]))|([a-z]+)|([AR])").unwrap()
+        });
+        let re = &RULE_REGEX;
+        let caps = re.captures(rule_str)?;
+
+        let m_attr_name = caps.get(1);
+        let m_comparator = caps.get(2);
+        let m_threshold = caps.get(3);
+        let m_dest_workflow = caps.get(4);
+        let m_dest_terminal = caps.get(5);
+        let m_uncond_workflow = caps.get(6);
+        let m_uncond_terminal = caps.get(7);
+
+        match (
+            m_attr_name,
+            m_comparator,
+            m_threshold,
+            m_dest_workflow,
+            m_dest_terminal,
+            m_uncond_workflow,
+            m_uncond_terminal,
+        ) {
+            (Some(m_attr_name), Some(m_comparator), Some(m_threshold), _, _, _, _) => {
+                let attribute = Attribute::parse(m_attr_name.as_str())?;
+                let is_gt = match m_comparator.as_str() {
+                    ">" => true,
+                    "<" => false,
+                    _ => {
+                        return None;
+                    }
+                };
+                let threshold = m_threshold.as_str().parse::<i32>().ok()?;
+                let condition = if is_gt {
+                    Condition::AttrGreaterThan {
+                        attribute,
+                        threshold,
+                    }
+                } else {
+                    Condition::AttrLessThan {
+                        attribute,
+                        threshold,
+                    }
+                };
+
+                let destination = match (m_dest_workflow, m_dest_terminal) {
+                    (Some(m_dest_workflow), _) => {
+                        // Conditional rule that leads to a workflow
+                        let workflow_name = m_dest_workflow.as_str();
+                        Some(Destination::Next(workflow_name.to_string()))
+                    }
+                    (_, Some(m_dest_terminal)) => {
+                        // Conditional rule that leads to a terminal
+                        let accept = match m_dest_terminal.as_str() {
+                            "A" => true,
+                            "R" => false,
+                            _ => {
+                                return None;
+                            }
+                        };
+                        Some(Destination::Terminal { accept })
+                    }
+                    _ => None,
+                }?;
+
+                Some(Rule {
+                    condition,
+                    destination,
+                })
+            }
+            (_, _, _, _, _, Some(m_uncond_workflow), _) => {
+                // Unconditional rule that leads to a workflow
+                let workflow_name = m_uncond_workflow.as_str();
+                Some(Rule {
+                    condition: Condition::Always,
+                    destination: Destination::Next(workflow_name.to_string()),
+                })
+            }
+            (_, _, _, _, _, _, Some(m_uncond_terminal)) => {
+                // Unconditional rule that leads to a terminal
+                // TODO move into parser for Destination
+                let accept = match m_uncond_terminal.as_str() {
+                    "A" => true,
+                    "R" => false,
+                    _ => {
+                        return None;
+                    }
+                };
+                Some(Rule {
+                    condition: Condition::Always,
+                    destination: Destination::Terminal { accept },
+                })
+            }
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug)]
 struct Workflow {
+    name: String,
     rules: Vec<Rule>,
 }
 
 impl Workflow {
     fn parse(line: &str) -> Option<Self> {
-        todo!()
+        static WORKFLOW_REGEX: Lazy<Regex> =
+            Lazy::new(|| Regex::new(r"([a-z]+)\{([^}]*)}").unwrap());
+
+        let re = &WORKFLOW_REGEX;
+        let caps = re.captures(line)?;
+        let name = caps.get(1)?.as_str();
+        let rule_strs = caps.get(2)?.as_str();
+
+        let mut rules = Vec::new();
+        for rule_str in rule_strs.split(',') {
+            rules.push(Rule::parse(rule_str)?);
+        }
+
+        Some(Self {
+            name: name.to_string(),
+            rules,
+        })
     }
 }
 
@@ -99,4 +236,6 @@ fn parse_input(input: &Vec<String>) -> (Vec<Workflow>, Vec<Part>) {
 pub fn run() {
     let input = get_input("src/day19/input0.txt");
     let (workflows, parts) = parse_input(&input);
+    println!("{:?}", workflows);
+    println!("{:?}", parts);
 }
