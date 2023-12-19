@@ -129,15 +129,23 @@ impl VectorImage {
         // https://cp-algorithms.com/geometry/area-of-simple-polygon.html
         let mut res: i64 = 0;
         for i in 0..self.vertices.len() {
-            let p = if (i > 0) {
+            let p = if i > 0 {
                 self.vertices[i - 1]
             } else {
                 *self.vertices.last().expect("last item in vec")
             };
             let q = self.vertices[i];
+
+            // Add the area from the interior
             res += (p.x - q.x) as i64 * (p.y + q.y) as i64;
+
+            // Add the area of the border tiles
+            res += abs(p.x - q.x) as i64;
+            res += abs(p.y - q.y) as i64;
         }
-        (abs(res) / 2) as u64
+
+        // Add 1 for the start tile
+        (abs(res) / 2 + 1) as u64
     }
 }
 
