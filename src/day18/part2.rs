@@ -29,36 +29,6 @@ impl Direction {
             _ => panic!("Bad direction {input}"),
         }
     }
-
-    fn turn_90_cw(&self) -> Self {
-        use Direction::*;
-        match self {
-            U => R,
-            R => D,
-            D => L,
-            L => U,
-        }
-    }
-
-    fn turn_180(&self) -> Self {
-        use Direction::*;
-        match self {
-            U => D,
-            R => L,
-            D => U,
-            L => R,
-        }
-    }
-
-    /// Return 1 if it's a right-hand turn, -1 if it's a left-hand turn, or None if neither.
-    fn turn_difference(&self, other: Direction) -> Option<i32> {
-        use Direction::*;
-        match (self, other) {
-            (U, R) | (R, D) | (D, L) | (L, U) => Some(1),
-            (U, L) | (L, D) | (D, R) | (R, U) => Some(-1),
-            _ => None,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -78,16 +48,6 @@ impl Coord {
             Direction::R => Self::new(self.x + distance, self.y),
             Direction::D => Self::new(self.x, self.y + distance),
             Direction::L => Self::new(self.x - distance, self.y),
-        }
-    }
-
-    fn direction_to_neighbor(&self, other: Coord) -> Direction {
-        match (other.x - self.x, other.y - self.y) {
-            (0, -1) => Direction::U,
-            (1, 0) => Direction::R,
-            (0, 1) => Direction::D,
-            (-1, 0) => Direction::L,
-            _ => panic!("{:?} is not a neighbor of {:?}", other, self),
         }
     }
 }
@@ -182,34 +142,14 @@ impl LineSegment {
     }
 }
 
-#[derive(Debug)]
-enum LoopOrientation {
-    Clockwise,
-    CounterClockwise,
-}
-
-impl LoopOrientation {
-    fn from_right_turn_count(right_turn_count: i32) -> Option<Self> {
-        match right_turn_count {
-            n if n > 0 => Some(LoopOrientation::Clockwise),
-            n if n < 0 => Some(LoopOrientation::CounterClockwise),
-            _ => None,
-        }
-    }
-}
-
 struct VectorPainter {
     location: Coord,
-    orientation: Option<Direction>,
-    total_right_turns: i32,
 }
 
 impl VectorPainter {
     fn new(start_coord: Coord) -> Self {
         Self {
             location: start_coord,
-            orientation: None,
-            total_right_turns: 0,
         }
     }
 
@@ -217,16 +157,6 @@ impl VectorPainter {
         let next_coord = self.location.next(step.direction, step.distance as i32);
         svg.add_vertex(next_coord);
         self.location = next_coord;
-
-        if let Some(prev) = self.orientation {
-            self.total_right_turns += prev.turn_difference(step.direction).unwrap_or_else(|| {
-                panic!(
-                    "Invalid step - must turn 90 degrees. Started {:?} and went {:?}",
-                    prev, step.direction,
-                )
-            });
-        }
-        self.orientation = Some(step.direction);
     }
 }
 
@@ -245,9 +175,6 @@ pub fn run() {
             painter.paint(&seg, &mut svg);
         });
 
-    // let loop_orientation = LoopOrientation::from_right_turn_count(painter.total_right_turns)
-    //     .expect("Did not form a loop");
-    // println!("Painter turn count: {:?}", loop_orientation);
     let area = svg.area();
     println!("Area: {area}");
 }
