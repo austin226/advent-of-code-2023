@@ -8,7 +8,7 @@ use regex::Regex;
 
 use crate::common::get_input;
 
-const IN_FILE: &str = "src/day18/input0.txt";
+const IN_FILE: &str = "src/day18/input1.txt";
 static LINE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r".*\(#(.....)(.)\)").unwrap());
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
