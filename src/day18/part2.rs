@@ -2,6 +2,7 @@ use std::hash::Hash;
 use std::ops::Shl;
 
 use itertools::Itertools;
+use num::abs;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
@@ -71,12 +72,12 @@ impl Coord {
         Self { x, y }
     }
 
-    fn next(&self, direction: Direction) -> Self {
+    fn next(&self, direction: Direction, distance: i32) -> Self {
         match direction {
-            Direction::U => Self::new(self.x, self.y - 1),
-            Direction::R => Self::new(self.x + 1, self.y),
-            Direction::D => Self::new(self.x, self.y + 1),
-            Direction::L => Self::new(self.x - 1, self.y),
+            Direction::U => Self::new(self.x, self.y - distance),
+            Direction::R => Self::new(self.x + distance, self.y),
+            Direction::D => Self::new(self.x, self.y + distance),
+            Direction::L => Self::new(self.x - distance, self.y),
         }
     }
 
@@ -123,16 +124,27 @@ impl VectorImage {
         self.vertices.push(coord);
     }
 
-    fn is_in_bounds(&self, coord: Coord) -> bool {
-        (self.bottom_left.x..=self.top_right.x).contains(&coord.x)
-            && (self.top_right.y..=self.bottom_left.y).contains(&coord.y)
+    fn area(&self) -> u64 {
+        // Calculate interior area - see
+        // https://cp-algorithms.com/geometry/area-of-simple-polygon.html
+        let mut res: i64 = 0;
+        for i in 0..self.vertices.len() {
+            let p = if (i > 0) {
+                self.vertices[i - 1]
+            } else {
+                *self.vertices.last().expect("last item in vec")
+            };
+            let q = self.vertices[i];
+            res += (p.x - q.x) as i64 * (p.y + q.y) as i64;
+        }
+        (abs(res) / 2) as u64
     }
 }
 
 #[derive(Debug)]
 struct LineSegment {
     direction: Direction,
-    distance: i64,
+    distance: u32,
 }
 
 impl LineSegment {
@@ -143,9 +155,9 @@ impl LineSegment {
         let dist_hex = format!("0{}", dist_hex);
         let decoded_dist = hex::decode(dist_hex).unwrap();
         debug_assert_eq!(3, decoded_dist.len(), "Expected 3 hex bytes in dist");
-        let distance: u64 = (decoded_dist[0] as u64).shl(16)
-            + (decoded_dist[1] as u64).shl(8)
-            + (decoded_dist[2] as u64);
+        let distance: u32 = (decoded_dist[0] as u32).shl(16)
+            + (decoded_dist[1] as u32).shl(8)
+            + (decoded_dist[2] as u32);
 
         let dir_hex = caps.get(2).unwrap().as_str();
         let dir_hex = format!("0{}", dir_hex);
@@ -157,7 +169,7 @@ impl LineSegment {
 
         Self {
             direction,
-            distance: distance as i64,
+            distance,
         }
     }
 }
@@ -194,7 +206,7 @@ impl VectorPainter {
     }
 
     fn paint(&mut self, step: &LineSegment, svg: &mut VectorImage) {
-        let next_coord = self.location.next(step.direction);
+        let next_coord = self.location.next(step.direction, step.distance as i32);
         svg.add_vertex(next_coord);
         self.location = next_coord;
 
@@ -225,9 +237,9 @@ pub fn run() {
             painter.paint(&seg, &mut svg);
         });
 
-    let loop_orientation = LoopOrientation::from_right_turn_count(painter.total_right_turns)
-        .expect("Did not form a loop");
-    println!("Painter turn count: {:?}", loop_orientation);
-    let area = svg.vertices.len();
+    // let loop_orientation = LoopOrientation::from_right_turn_count(painter.total_right_turns)
+    //     .expect("Did not form a loop");
+    // println!("Painter turn count: {:?}", loop_orientation);
+    let area = svg.area();
     println!("Area: {area}");
 }
