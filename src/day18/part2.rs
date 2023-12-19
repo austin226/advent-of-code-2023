@@ -50,6 +50,16 @@ impl Direction {
             L => R,
         }
     }
+
+    /// Return 1 if it's a right-hand turn, -1 if it's a left-hand turn, or None if neither.
+    fn turn_difference(&self, other: Direction) -> Option<i32> {
+        use Direction::*;
+        match (self, other) {
+            (U, R) | (R, D) | (D, L) | (L, U) => Some(1),
+            (U, L) | (L, D) | (D, R) | (R, U) => Some(-1),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -84,14 +94,8 @@ impl Coord {
 }
 
 #[derive(Debug)]
-struct VectorPoint {
-    coord: Coord,
-    is_border: bool,
-}
-
-#[derive(Debug)]
 struct VectorImage {
-    points: HashMap<Coord, VectorPoint>,
+    vertices: Vec<Coord>,
     bottom_left: Coord,
     top_right: Coord,
 }
@@ -99,20 +103,18 @@ struct VectorImage {
 impl VectorImage {
     fn new() -> Self {
         let start_coord = Self::start_coord();
-        let mut new_svg = Self {
-            points: HashMap::new(),
+        Self {
+            vertices: vec![start_coord],
             bottom_left: start_coord,
             top_right: start_coord,
-        };
-        new_svg.add_border_point(start_coord);
-        new_svg
+        }
     }
 
     fn start_coord() -> Coord {
         Coord::new(0, 0)
     }
 
-    fn add_border_point(&mut self, coord: Coord) {
+    fn add_vertex(&mut self, coord: Coord) {
         // Expand bounding box
         self.bottom_left.x = std::cmp::min(self.bottom_left.x, coord.x);
         self.bottom_left.y = std::cmp::max(self.bottom_left.y, coord.y);
@@ -120,105 +122,12 @@ impl VectorImage {
         self.top_right.y = std::cmp::min(self.top_right.y, coord.y);
 
         // Store the point
-        let point = VectorPoint {
-            coord,
-            is_border: true,
-        };
-        self.points.insert(coord, point);
-    }
-
-    fn add_interior_point(&mut self, coord: Coord) {
-        let point = VectorPoint {
-            coord,
-            is_border: false,
-        };
-        self.points.insert(coord, point);
-    }
-
-    fn get_edge_neighbors(&self, coord: Coord) -> Vec<Coord> {
-        use Direction::*;
-        let mut neighbors = Vec::new();
-        for direction in [U, R, D, L] {
-            if let Some(neighbor) = self.points.get(&coord.next(direction)) {
-                neighbors.push(neighbor.coord);
-            }
-        }
-        debug_assert_eq!(2, neighbors.len(), "Polygon is not connected");
-        neighbors
-    }
-
-    fn get_non_edge_neighbors(&self, coord: Coord) -> Vec<Coord> {
-        use Direction::*;
-        let mut neighbors = Vec::new();
-        for direction in [U, R, D, L] {
-            let neighbor_coord = coord.next(direction);
-            if self.points.get(&neighbor_coord).is_none() {
-                neighbors.push(neighbor_coord);
-            }
-        }
-        neighbors
+        self.vertices.push(coord);
     }
 
     fn is_in_bounds(&self, coord: Coord) -> bool {
         (self.bottom_left.x..=self.top_right.x).contains(&coord.x)
             && (self.top_right.y..=self.bottom_left.y).contains(&coord.y)
-    }
-
-    /// Try to flood fill a polygon starting with a non-edge Coord.
-    /// If we hit the edge of the bounding box, stop and return None.
-    /// Otherwise, return all the coordinates inside the polygon.
-    fn try_fill(&self, start: Coord) -> Option<HashSet<Coord>> {
-        let mut visited = HashSet::<Coord>::new();
-        visited.insert(start);
-        let mut q: Queue<Coord> = queue![];
-        let _ = q.add(start);
-        while q.size() > 0 {
-            let v = q.remove().unwrap();
-            if !self.is_in_bounds(v) {
-                // Out of bounds - not inside the polygon
-                return None;
-            }
-            let neighbors = self.get_non_edge_neighbors(v);
-            for u in neighbors {
-                if !visited.contains(&u) {
-                    visited.insert(u);
-                    let _ = q.add(u);
-                }
-            }
-        }
-
-        Some(visited)
-    }
-
-    fn get_fill_coords(&self) -> HashSet<Coord> {
-        assert!(self.points.len() >= 8, "Not enough points to fill polygon");
-
-        // Advance until we're on an edge point (not a corner)
-        let mut coord = self.points.get(&Self::start_coord()).unwrap().coord;
-        let mut neighbors = self.get_edge_neighbors(coord);
-        while coord.direction_to_neighbor(neighbors[0])
-            != coord.direction_to_neighbor(neighbors[1]).turn_180()
-        {
-            // This is a corner
-            coord = neighbors[0];
-            neighbors = self.get_edge_neighbors(coord);
-        }
-
-        // 2 neighbors - this is on an edge
-        debug_assert_eq!(2, neighbors.len());
-        let neighbor = neighbors[0];
-        let edge_dir = coord.direction_to_neighbor(neighbor);
-
-        // Try filling in this direction
-        // If we hit the edge of the bounding box, try the other potential direction
-        let non_edge_dir = edge_dir.turn_90_cw();
-        let non_edge_coord = coord.next(non_edge_dir);
-        self.try_fill(non_edge_coord).unwrap_or_else(|| {
-            // Try again with other non-edge coord
-            let other_non_edge_coord = coord.next(non_edge_dir.turn_180());
-            self.try_fill(other_non_edge_coord)
-                .expect("Failed to fill in either direction")
-        })
     }
 }
 
@@ -257,21 +166,33 @@ impl LineSegment {
 
 struct VectorPainter {
     location: Coord,
+    orientation: Option<Direction>,
+    total_right_turns: i32,
 }
 
 impl VectorPainter {
     fn new(start_coord: Coord) -> Self {
         Self {
             location: start_coord,
+            orientation: None,
+            total_right_turns: 0,
         }
     }
 
     fn paint(&mut self, step: &LineSegment, svg: &mut VectorImage) {
-        for i in 0..step.distance {
-            let next_coord = self.location.next(step.direction);
-            svg.add_border_point(next_coord);
-            self.location = next_coord;
+        let next_coord = self.location.next(step.direction);
+        svg.add_vertex(next_coord);
+        self.location = next_coord;
+
+        if let Some(prev) = self.orientation {
+            self.total_right_turns += prev.turn_difference(step.direction).unwrap_or_else(|| {
+                panic!(
+                    "Invalid step - must turn 90 degrees. Started {:?} and went {:?}",
+                    prev, step.direction,
+                )
+            });
         }
+        self.orientation = Some(step.direction);
     }
 }
 
@@ -291,6 +212,6 @@ pub fn run() {
         });
     // svg.fill_polygon(Color::new(FILL_COLOR));
 
-    let area = svg.points.len();
+    let area = svg.vertices.len();
     println!("Area: {area}");
 }
