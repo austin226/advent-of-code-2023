@@ -1,10 +1,8 @@
-use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::ops::Shl;
 
 use itertools::Itertools;
 use once_cell::sync::Lazy;
-use queues::*;
 use regex::Regex;
 
 use crate::common::get_input;
@@ -164,6 +162,22 @@ impl LineSegment {
     }
 }
 
+#[derive(Debug)]
+enum LoopOrientation {
+    Clockwise,
+    CounterClockwise,
+}
+
+impl LoopOrientation {
+    fn from_right_turn_count(right_turn_count: i32) -> Option<Self> {
+        match right_turn_count {
+            n if n > 0 => Some(LoopOrientation::Clockwise),
+            n if n < 0 => Some(LoopOrientation::CounterClockwise),
+            _ => None,
+        }
+    }
+}
+
 struct VectorPainter {
     location: Coord,
     orientation: Option<Direction>,
@@ -210,8 +224,10 @@ pub fn run() {
         .for_each(|seg| {
             painter.paint(&seg, &mut svg);
         });
-    // svg.fill_polygon(Color::new(FILL_COLOR));
 
+    let loop_orientation = LoopOrientation::from_right_turn_count(painter.total_right_turns)
+        .expect("Did not form a loop");
+    println!("Painter turn count: {:?}", loop_orientation);
     let area = svg.vertices.len();
     println!("Area: {area}");
 }
