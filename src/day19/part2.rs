@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::ops::Range;
 
+use itertools::Itertools;
 use once_cell::sync::Lazy;
-use range_collections::range_set::RangeSet;
+use range_collections::range_set::{RangeSet, RangeSetRange};
 use range_collections::RangeSet2;
 use regex::Regex;
 
@@ -192,11 +193,22 @@ impl Workflow {
     }
 }
 
+#[derive(Clone)]
 struct PartRange {
     x: RangeSet2<i32>,
     m: RangeSet2<i32>,
     a: RangeSet2<i32>,
     s: RangeSet2<i32>,
+}
+
+fn sum_range_set(range_set: &RangeSet2<i32>) -> i32 {
+    range_set
+        .iter()
+        .map(|range| match range {
+            RangeSetRange::Range(range) => range.end - range.start,
+            _ => panic!("Bad range"),
+        })
+        .sum()
 }
 
 impl PartRange {
@@ -217,6 +229,19 @@ impl PartRange {
             Attribute::A => self.a.intersection_with(&range_set),
             Attribute::S => self.s.intersection_with(&range_set),
         };
+    }
+
+    fn intersect(&mut self, attribute: Attribute, range: Range<i32>) -> PartRange {
+        let mut new_part_range = self.clone();
+        new_part_range.reduce(attribute, range);
+        new_part_range
+    }
+
+    fn size(&self) -> i64 {
+        [&self.x, &self.m, &self.a, &self.s]
+            .iter()
+            .map(|rs| sum_range_set(rs))
+            .fold(1, |acc, x| acc * x as i64)
     }
 }
 
@@ -241,6 +266,13 @@ impl System {
     fn process(&self) -> u64 {
         let mut current_workflow_name = "in".to_string();
         let mut part_range = PartRange::new();
+
+        let current_workflow = self
+            .workflows
+            .get(&current_workflow_name)
+            .expect("workflow");
+        for rule in current_workflow.rules.iter() {}
+
         todo!()
     }
 }
@@ -248,6 +280,6 @@ impl System {
 pub fn run() {
     let input = get_input("src/day19/input0.txt");
     let system = System::parse(&input);
-    // let ans = system.process_parts();
-    // println!("{ans}");
+    let ans = system.process();
+    println!("{ans}");
 }
