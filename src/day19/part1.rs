@@ -300,7 +300,7 @@ impl System {
 }
 
 pub fn run() {
-    let input = get_input("src/day19/input0.txt");
+    let input = get_input("src/day19/input1.txt");
     let system = System::parse(&input);
     let ans = system.process_parts();
     println!("{ans}");
