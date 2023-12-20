@@ -155,6 +155,7 @@ impl<'a> System<'a> {
 
 pub fn run() {
     let input = get_input("src/day20/input0.txt");
-    let system = System::parse(&input).expect("Failed to parse");
+    let mut system = System::parse(&input).expect("Failed to parse");
+    system.simulate();
     println!("{} high, {} low", system.high_pulses, system.low_pulses);
 }
