@@ -216,7 +216,7 @@ impl PartRange {
             Attribute::M => self.m.intersection_with(&range_set),
             Attribute::A => self.a.intersection_with(&range_set),
             Attribute::S => self.s.intersection_with(&range_set),
-        }
+        };
     }
 }
 
