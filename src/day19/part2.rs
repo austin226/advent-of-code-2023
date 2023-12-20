@@ -232,9 +232,25 @@ impl PartRange {
         };
     }
 
-    fn intersect(&mut self, attribute: Attribute, range: Range<i32>) -> PartRange {
+    fn intersect(&self, attribute: Attribute, range: Range<i32>) -> PartRange {
         let mut new_part_range = self.clone();
         new_part_range.reduce(attribute, range);
+        new_part_range
+    }
+
+    fn subtract(&mut self, attribute: Attribute, range: Range<i32>) {
+        let range_set: RangeSet2<i32> = RangeSet::from(range);
+        match attribute {
+            Attribute::X => self.x.difference_with(&range_set),
+            Attribute::M => self.m.difference_with(&range_set),
+            Attribute::A => self.a.difference_with(&range_set),
+            Attribute::S => self.s.difference_with(&range_set),
+        };
+    }
+
+    fn difference(&self, attribute: Attribute, range: Range<i32>) -> PartRange {
+        let mut new_part_range = self.clone();
+        new_part_range.subtract(attribute, range);
         new_part_range
     }
 
@@ -269,34 +285,61 @@ impl System {
         Self { workflows }
     }
 
+    fn get_workflow(&self, workflow_name: &String) -> &Workflow {
+        self.workflows
+            .get(workflow_name)
+            .unwrap_or_else(|| panic!("workflow {workflow_name} not found"))
+    }
+
     /// Count all the possible parts that will be accepted.
     fn process(&self) -> i64 {
-        let mut current_workflow_name = "in".to_string();
         let mut part_range = PartRange::new();
+        self.process_part_range(&mut part_range, &"in".to_string());
+        part_range.size()
+    }
 
-        // TODO - I want to map part ranges to workflows, then to rules, then to accept/reject.
+    /// Return the subset of the part range that will be accepted, starting in the given workflow.
+    fn process_part_range(&self, part_range: &mut PartRange, workflow_name: &String) {
+        // TODO maybe return the new part range? idk
         // Eventually, we only need a part range of accepted parts.
         // So, we can just drop any ranges that are rejected.
-        let current_workflow = self
-            .workflows
-            .get(&current_workflow_name)
-            .expect("workflow");
-        for rule in current_workflow.rules.iter() {
+        let workflow = self.get_workflow(workflow_name);
+        for rule in workflow.rules.iter() {
             match rule.condition {
                 Condition::AttrLessThan {
                     attribute,
                     threshold,
                 } => {
-                    let new_range = part_range.intersect(attribute, PART_RANGE.start..threshold);
-                    if !new_range.is_empty() {}
+                    let attr_range = PART_RANGE.start..threshold;
+                    let mut new_range = part_range.intersect(attribute, attr_range.clone());
+                    if !new_range.is_empty() {
+                        match rule.destination.clone() {
+                            Destination::Next { workflow_name } => {
+                                self.process_part_range(&mut new_range, &workflow_name)
+                                // TODO reduce part_range to intersect with new_range
+                            }
+                            Destination::Terminal { accept } => {
+                                if accept {
+                                    *part_range = new_range;
+                                } else {
+                                    *part_range = part_range.difference(attribute, attr_range);
+                                }
+                            }
+                        }
+                    }
                 }
-                _ => {
+                Condition::AttrGreaterThan {
+                    attribute,
+                    threshold,
+                } => {
+                    let attr_range = (threshold + 1)..PART_RANGE.end;
+                    // TODO repeat logic from AttrLessThan
                     todo!()
                 }
+                Condition::Always => todo!(),
             }
+            // TODO repeat for other rules, reducing their respective part ranges
         }
-
-        part_range.size()
     }
 }
 
