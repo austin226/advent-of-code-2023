@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 use std::ops::Range;
 
-use itertools::Itertools;
 use once_cell::sync::Lazy;
 use range_collections::range_set::{RangeSet, RangeSetRange};
 use range_collections::RangeSet2;
 use regex::Regex;
 
 use crate::common::get_input;
+
+const PART_RANGE: Range<i32> = 1..4001;
 
 #[derive(Debug, Copy, Clone)]
 enum Attribute {
@@ -214,10 +215,10 @@ fn sum_range_set(range_set: &RangeSet2<i32>) -> i32 {
 impl PartRange {
     fn new() -> Self {
         Self {
-            x: RangeSet::from(1..4001),
-            m: RangeSet::from(1..4001),
-            a: RangeSet::from(1..4001),
-            s: RangeSet::from(1..4001),
+            x: RangeSet::from(PART_RANGE),
+            m: RangeSet::from(PART_RANGE),
+            a: RangeSet::from(PART_RANGE),
+            s: RangeSet::from(PART_RANGE),
         }
     }
 
@@ -243,6 +244,12 @@ impl PartRange {
             .map(|rs| sum_range_set(rs))
             .fold(1, |acc, x| acc * x as i64)
     }
+
+    fn is_empty(&self) -> bool {
+        [&self.x, &self.m, &self.a, &self.s]
+            .iter()
+            .all(|rs| rs.is_empty())
+    }
 }
 
 struct System {
@@ -267,11 +274,27 @@ impl System {
         let mut current_workflow_name = "in".to_string();
         let mut part_range = PartRange::new();
 
+        // TODO - I want to map part ranges to workflows, then to rules, then to accept/reject.
+        // Eventually, we only need a part range of accepted parts.
+        // So, we can just drop any ranges that are rejected.
         let current_workflow = self
             .workflows
             .get(&current_workflow_name)
             .expect("workflow");
-        for rule in current_workflow.rules.iter() {}
+        for rule in current_workflow.rules.iter() {
+            match rule.condition {
+                Condition::AttrLessThan {
+                    attribute,
+                    threshold,
+                } => {
+                    let new_range = part_range.intersect(attribute, PART_RANGE.start..threshold);
+                    if !new_range.is_empty() {}
+                }
+                _ => {
+                    todo!()
+                }
+            }
+        }
 
         part_range.size()
     }
