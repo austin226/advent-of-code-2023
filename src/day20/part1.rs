@@ -72,28 +72,27 @@ impl ProcessPulse for Broadcaster {
 }
 
 #[derive(Debug)]
-struct Module {
+struct Module<'a> {
     pulse_processor: Box<dyn ProcessPulse>,
-    destinations: Vec<String>,
+    destinations: Vec<&'a str>,
 }
 
 #[derive(Debug)]
-struct System {
-    modules: HashMap<String, Module>,
+struct System<'a> {
+    modules: HashMap<&'a str, Module<'a>>,
     low_pulses: i32,
     high_pulses: i32,
 }
 
-impl System {
-    fn parse(input: &Vec<String>) -> Option<Self> {
+impl<'a> System<'a> {
+    fn parse(input: &'a Vec<String>) -> Option<Self> {
         static MODULE_REGEX: Lazy<Regex> =
             Lazy::new(|| Regex::new(r"([%&]?)(\w+) -> (.*)").unwrap());
         let mut modules = HashMap::new();
         for line in input {
             let caps = MODULE_REGEX.captures(line)?;
-            let name = caps.get(2)?.as_str();
-            let module_name = name.to_string();
-            let pulse_processor: Box<dyn ProcessPulse> = if name == BROADCASTER_NAME {
+            let module_name = caps.get(2)?.as_str();
+            let pulse_processor: Box<dyn ProcessPulse> = if module_name == BROADCASTER_NAME {
                 Box::new(Broadcaster)
             } else {
                 let prefix = caps.get(1)?.as_str();
@@ -104,12 +103,7 @@ impl System {
                 }
             };
 
-            let destinations = caps
-                .get(3)?
-                .as_str()
-                .split(", ")
-                .map(|s| s.to_string())
-                .collect_vec();
+            let destinations = caps.get(3)?.as_str().split(", ").collect_vec();
 
             modules.insert(
                 module_name,
@@ -132,8 +126,8 @@ impl System {
         self.high_pulses = 0;
 
         // Holds pulses and the modules to which they will be applied.
-        let mut q = VecDeque::<(Pulse, String)>::new();
-        q.push_back((Pulse::Low, BROADCASTER_NAME.to_string()));
+        let mut q = VecDeque::<(Pulse, &str)>::new();
+        q.push_back((Pulse::Low, BROADCASTER_NAME));
 
         while !q.is_empty() {
             let (in_pulse, module_name) = q.pop_front().expect("queue should not be empty");
@@ -152,7 +146,7 @@ impl System {
             if let Some(out_pulse) = module.pulse_processor.process(in_pulse) {
                 // Apply out_pulse to all destinations
                 for dest_module_name in module.destinations.iter() {
-                    q.push_back((out_pulse, dest_module_name.clone()));
+                    q.push_back((out_pulse, dest_module_name));
                 }
             }
         }
