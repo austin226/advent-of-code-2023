@@ -1,9 +1,12 @@
+use rayon::prelude::*;
+use std::collections::HashMap;
+
 use once_cell::sync::Lazy;
 use regex::Regex;
 
 use crate::common::get_input;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum Attribute {
     X,
     M,
@@ -53,6 +56,24 @@ impl Part {
             Attribute::S => self.s,
         }
     }
+
+    fn rating(&self) -> i32 {
+        self.x + self.m + self.a + self.s
+    }
+
+    fn meets_condition(&self, condition: &Condition) -> bool {
+        match condition {
+            Condition::Always => true,
+            Condition::AttrGreaterThan {
+                attribute,
+                threshold,
+            } => self.get_attribute(attribute) > *threshold,
+            Condition::AttrLessThan {
+                attribute,
+                threshold,
+            } => self.get_attribute(attribute) < *threshold,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -74,13 +95,13 @@ enum Condition {
 }
 
 /// Next workflow, or a terminal destination
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Destination {
     /// Terminal - either accept or reject the part
     Terminal { accept: bool },
 
     /// Go to another workflow by name
-    Next(String),
+    Next { workflow_name: String },
 }
 
 #[derive(Debug)]
@@ -141,8 +162,8 @@ impl Rule {
                 let destination = match (m_dest_workflow, m_dest_terminal) {
                     (Some(m_dest_workflow), _) => {
                         // Conditional rule that leads to a workflow
-                        let workflow_name = m_dest_workflow.as_str();
-                        Some(Destination::Next(workflow_name.to_string()))
+                        let workflow_name = m_dest_workflow.as_str().to_string();
+                        Some(Destination::Next { workflow_name })
                     }
                     (_, Some(m_dest_terminal)) => {
                         // Conditional rule that leads to a terminal
@@ -165,10 +186,10 @@ impl Rule {
             }
             (_, _, _, _, _, Some(m_uncond_workflow), _) => {
                 // Unconditional rule that leads to a workflow
-                let workflow_name = m_uncond_workflow.as_str();
+                let workflow_name = m_uncond_workflow.as_str().to_string();
                 Some(Rule {
                     condition: Condition::Always,
-                    destination: Destination::Next(workflow_name.to_string()),
+                    destination: Destination::Next { workflow_name },
                 })
             }
             (_, _, _, _, _, _, Some(m_uncond_terminal)) => {
@@ -219,23 +240,68 @@ impl Workflow {
     }
 }
 
-fn parse_input(input: &Vec<String>) -> (Vec<Workflow>, Vec<Part>) {
-    let mut workflows = Vec::new();
-    let mut parts = Vec::new();
-    for line in input {
-        if let Some(workflow) = Workflow::parse(line.as_str()) {
-            workflows.push(workflow);
-        } else if let Some(part) = Part::parse(line.as_str()) {
-            parts.push(part);
+struct System {
+    workflows: HashMap<String, Workflow>,
+    parts: Vec<Part>,
+}
+
+impl System {
+    fn parse(input: &Vec<String>) -> Self {
+        let mut workflows = HashMap::new();
+        let mut parts = Vec::new();
+
+        for line in input {
+            if let Some(workflow) = Workflow::parse(line.as_str()) {
+                workflows.insert(workflow.name.clone(), workflow);
+            } else if let Some(part) = Part::parse(line.as_str()) {
+                parts.push(part);
+            }
         }
+
+        Self { workflows, parts }
     }
 
-    (workflows, parts)
+    /// Return the sum of all accepted parts.
+    fn process_parts(&self) -> i32 {
+        self.parts
+            .par_iter()
+            // .iter()
+            .filter(|part| self.process_part(part))
+            .map(|part| part.rating())
+            .sum()
+    }
+
+    /// Return whether the part is accepted.
+    fn process_part(&self, part: &Part) -> bool {
+        // println!("Process part {:?}", part);
+        let mut current_workflow_name = "in".to_string();
+
+        loop {
+            // println!("Workflow {current_workflow_name}");
+            let workflow = self
+                .workflows
+                .get(&current_workflow_name)
+                .unwrap_or_else(|| panic!("workflow {current_workflow_name} not found"));
+            for rule in workflow.rules.iter() {
+                // println!("Checking rule {:?}", rule);
+                if part.meets_condition(&rule.condition) {
+                    match rule.destination.clone() {
+                        Destination::Terminal { accept: true } => return true,
+                        Destination::Terminal { accept: false } => return false,
+                        Destination::Next { workflow_name } => {
+                            current_workflow_name = workflow_name;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub fn run() {
     let input = get_input("src/day19/input0.txt");
-    let (workflows, parts) = parse_input(&input);
-    println!("{:?}", workflows);
-    println!("{:?}", parts);
+    let system = System::parse(&input);
+    let ans = system.process_parts();
+    println!("{ans}");
 }
