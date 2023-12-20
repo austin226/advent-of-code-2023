@@ -1,7 +1,9 @@
-use rayon::prelude::*;
 use std::collections::HashMap;
+use std::ops::Range;
 
 use once_cell::sync::Lazy;
+use range_collections::range_set::RangeSet;
+use range_collections::RangeSet2;
 use regex::Regex;
 
 use crate::common::get_input;
@@ -190,6 +192,34 @@ impl Workflow {
     }
 }
 
+struct PartRange {
+    x: RangeSet2<i32>,
+    m: RangeSet2<i32>,
+    a: RangeSet2<i32>,
+    s: RangeSet2<i32>,
+}
+
+impl PartRange {
+    fn new() -> Self {
+        Self {
+            x: RangeSet::from(0..4001),
+            m: RangeSet::from(0..4001),
+            a: RangeSet::from(0..4001),
+            s: RangeSet::from(0..4001),
+        }
+    }
+
+    fn reduce(&mut self, attribute: Attribute, range: Range<i32>) {
+        let range_set: RangeSet2<i32> = RangeSet::from(range);
+        match attribute {
+            Attribute::X => self.x.intersection_with(&range_set),
+            Attribute::M => self.m.intersection_with(&range_set),
+            Attribute::A => self.a.intersection_with(&range_set),
+            Attribute::S => self.s.intersection_with(&range_set),
+        }
+    }
+}
+
 struct System {
     workflows: HashMap<String, Workflow>,
 }
@@ -205,6 +235,13 @@ impl System {
         }
 
         Self { workflows }
+    }
+
+    /// Count all the possible parts that will be accepted.
+    fn process(&self) -> u64 {
+        let mut current_workflow_name = "in".to_string();
+        let mut part_range = PartRange::new();
+        todo!()
     }
 }
 
