@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use itertools::Itertools;
 use once_cell::sync::Lazy;
@@ -80,6 +80,8 @@ struct Module {
 #[derive(Debug)]
 struct System {
     modules: HashMap<String, Module>,
+    low_pulses: i32,
+    high_pulses: i32,
 }
 
 impl System {
@@ -118,12 +120,47 @@ impl System {
             );
         }
 
-        Some(Self { modules })
+        Some(Self {
+            modules,
+            low_pulses: 0,
+            high_pulses: 0,
+        })
+    }
+
+    fn simulate(&mut self) {
+        self.low_pulses = 0;
+        self.high_pulses = 0;
+
+        // Holds pulses and the modules to which they will be applied.
+        let mut q = VecDeque::<(Pulse, String)>::new();
+        q.push_back((Pulse::Low, BROADCASTER_NAME.to_string()));
+
+        while !q.is_empty() {
+            let (in_pulse, module_name) = q.pop_front().expect("queue should not be empty");
+            match in_pulse {
+                Pulse::Low => {
+                    self.low_pulses += 1;
+                }
+                Pulse::High => {
+                    self.high_pulses += 1;
+                }
+            }
+            let module = self
+                .modules
+                .get_mut(&module_name)
+                .unwrap_or_else(|| panic!("Module {module_name} not found"));
+            if let Some(out_pulse) = module.pulse_processor.process(in_pulse) {
+                // Apply out_pulse to all destinations
+                for dest_module_name in module.destinations.iter() {
+                    q.push_back((out_pulse, dest_module_name.clone()));
+                }
+            }
+        }
     }
 }
 
 pub fn run() {
     let input = get_input("src/day20/input0.txt");
     let system = System::parse(&input).expect("Failed to parse");
-    println!("{:?}", system);
+    println!("{} high, {} low", system.high_pulses, system.low_pulses);
 }
