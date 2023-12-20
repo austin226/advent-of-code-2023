@@ -8,16 +8,72 @@ use crate::common::get_input;
 
 const BROADCASTER_NAME: &str = "broadcaster";
 
+#[derive(Debug, Copy, Clone)]
+enum Pulse {
+    Low,
+    High,
+}
+
+trait ProcessPulse: std::fmt::Debug {
+    /// Receive a pulse and maybe emit a pulse.
+    fn process(&mut self, pulse: Pulse) -> Option<Pulse>;
+}
+
+#[derive(Debug, Default)]
+struct FlipFlop {
+    is_on: bool,
+}
+
+impl ProcessPulse for FlipFlop {
+    fn process(&mut self, pulse: Pulse) -> Option<Pulse> {
+        match pulse {
+            Pulse::High => None,
+            Pulse::Low => {
+                if self.is_on {
+                    self.is_on = false;
+                    Some(Pulse::Low)
+                } else {
+                    self.is_on = true;
+                    Some(Pulse::High)
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct Conjunction {
+    ever_received_low: bool,
+}
+
+impl ProcessPulse for Conjunction {
+    fn process(&mut self, pulse: Pulse) -> Option<Pulse> {
+        if self.ever_received_low {
+            Some(Pulse::High)
+        } else {
+            match pulse {
+                Pulse::High => Some(Pulse::Low),
+                Pulse::Low => {
+                    self.ever_received_low = true;
+                    Some(Pulse::High)
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
-enum ModuleType {
-    FlipFlop,
-    Conjunction,
-    Broadcaster,
+struct Broadcaster;
+
+impl ProcessPulse for Broadcaster {
+    fn process(&mut self, pulse: Pulse) -> Option<Pulse> {
+        Some(pulse)
+    }
 }
 
 #[derive(Debug)]
 struct Module {
-    module_type: ModuleType,
+    pulse_processor: Box<dyn ProcessPulse>,
     destinations: Vec<String>,
 }
 
@@ -32,18 +88,16 @@ impl System {
             Lazy::new(|| Regex::new(r"([%&]?)(\w+) -> (.*)").unwrap());
         let mut modules = HashMap::new();
         for line in input {
-            let module_type: ModuleType;
-
             let caps = MODULE_REGEX.captures(line)?;
             let name = caps.get(2)?.as_str();
             let module_name = name.to_string();
-            let module_type = if name == BROADCASTER_NAME {
-                ModuleType::Broadcaster
+            let pulse_processor: Box<dyn ProcessPulse> = if name == BROADCASTER_NAME {
+                Box::new(Broadcaster)
             } else {
                 let prefix = caps.get(1)?.as_str();
                 match prefix {
-                    "%" => ModuleType::FlipFlop,
-                    "&" => ModuleType::Conjunction,
+                    "%" => Box::<FlipFlop>::default(),
+                    "&" => Box::<Conjunction>::default(),
                     _ => return None,
                 }
             };
@@ -58,7 +112,7 @@ impl System {
             modules.insert(
                 module_name,
                 Module {
-                    module_type,
+                    pulse_processor,
                     destinations,
                 },
             );
