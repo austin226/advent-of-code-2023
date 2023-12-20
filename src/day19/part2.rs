@@ -214,10 +214,10 @@ fn sum_range_set(range_set: &RangeSet2<i32>) -> i32 {
 impl PartRange {
     fn new() -> Self {
         Self {
-            x: RangeSet::from(0..4001),
-            m: RangeSet::from(0..4001),
-            a: RangeSet::from(0..4001),
-            s: RangeSet::from(0..4001),
+            x: RangeSet::from(1..4001),
+            m: RangeSet::from(1..4001),
+            a: RangeSet::from(1..4001),
+            s: RangeSet::from(1..4001),
         }
     }
 
@@ -263,7 +263,7 @@ impl System {
     }
 
     /// Count all the possible parts that will be accepted.
-    fn process(&self) -> u64 {
+    fn process(&self) -> i64 {
         let mut current_workflow_name = "in".to_string();
         let mut part_range = PartRange::new();
 
@@ -273,7 +273,7 @@ impl System {
             .expect("workflow");
         for rule in current_workflow.rules.iter() {}
 
-        todo!()
+        part_range.size()
     }
 }
 
