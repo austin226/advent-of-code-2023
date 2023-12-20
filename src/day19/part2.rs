@@ -299,7 +299,7 @@ impl System {
     }
 
     /// Return the subset of the part range that will be accepted, starting in the given workflow.
-    fn process_part_range(&self, part_range: &mut PartRange, workflow_name: &String) {
+    fn process_part_range(&self, part_range: &mut PartRange, workflow_name: &String) -> PartRange {
         // TODO maybe return the new part range? idk
         // Eventually, we only need a part range of accepted parts.
         // So, we can just drop any ranges that are rejected.
@@ -315,7 +315,7 @@ impl System {
                     if !new_range.is_empty() {
                         match rule.destination.clone() {
                             Destination::Next { workflow_name } => {
-                                self.process_part_range(&mut new_range, &workflow_name)
+                                // self.process_part_range(&mut new_range, &workflow_name)
                                 // TODO reduce part_range to intersect with new_range
                             }
                             Destination::Terminal { accept } => {
@@ -340,6 +340,8 @@ impl System {
             }
             // TODO repeat for other rules, reducing their respective part ranges
         }
+        // TODO return merged part range of accepted
+        todo!()
     }
 }
 
