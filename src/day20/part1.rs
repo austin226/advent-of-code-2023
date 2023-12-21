@@ -121,7 +121,7 @@ impl<'a> System<'a> {
         })
     }
 
-    fn simulate(&mut self) {
+    fn press_button(&mut self) {
         self.low_pulses = 0;
         self.high_pulses = 0;
 
@@ -139,14 +139,17 @@ impl<'a> System<'a> {
                     self.high_pulses += 1;
                 }
             }
-            let module = self
-                .modules
-                .get_mut(&module_name)
-                .unwrap_or_else(|| panic!("Module {module_name} not found"));
-            if let Some(out_pulse) = module.pulse_processor.process(in_pulse) {
-                // Apply out_pulse to all destinations
-                for dest_module_name in module.destinations.iter() {
-                    q.push_back((out_pulse, dest_module_name));
+            if let Some(module) = self.modules.get_mut(&module_name) {
+                if let Some(out_pulse) = module.pulse_processor.process(in_pulse) {
+                    // Apply out_pulse to all destinations
+                    for dest_module_name in module.destinations.iter() {
+                        let pulse_name = match out_pulse {
+                            Pulse::Low => "low",
+                            Pulse::High => "high",
+                        };
+                        println!("{module_name} -{pulse_name}-> {dest_module_name}");
+                        q.push_back((out_pulse, dest_module_name));
+                    }
                 }
             }
         }
@@ -154,8 +157,8 @@ impl<'a> System<'a> {
 }
 
 pub fn run() {
-    let input = get_input("src/day20/input0.txt");
+    let input = get_input("src/day20/input2.txt");
     let mut system = System::parse(&input).expect("Failed to parse");
-    system.simulate();
+    system.press_button();
     println!("{} high, {} low", system.high_pulses, system.low_pulses);
 }
