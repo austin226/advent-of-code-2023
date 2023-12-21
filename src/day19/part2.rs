@@ -311,7 +311,7 @@ impl System {
                     threshold,
                 } => {
                     let attr_range = PART_RANGE.start..threshold;
-                    let mut new_range = part_range.intersect(attribute, attr_range.clone());
+                    let new_range = part_range.intersect(attribute, attr_range.clone());
                     if !new_range.is_empty() {
                         match rule.destination.clone() {
                             Destination::Next { workflow_name } => {
