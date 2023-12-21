@@ -12,7 +12,7 @@ enum Direction {
     W,
 }
 
-#[derive(Hash)]
+#[derive(Hash, Copy, Clone)]
 struct Point {
     row: usize,
     col: usize,
@@ -43,6 +43,7 @@ struct Tile {
 struct Map {
     height: usize,
     width: usize,
+    start: Point,
     tiles: Vec<Vec<Tile>>,
 }
 
@@ -59,6 +60,7 @@ impl Map {
             "Map must be 256x256 or smaller"
         );
 
+        let mut start_point: Option<Point> = None;
         let mut tiles: Vec<Vec<Tile>> = Vec::new();
         tiles.reserve(height);
         for r in 0..height {
@@ -71,6 +73,12 @@ impl Map {
                 let point = Point { row: r, col: c };
                 let chr = row_chars[c];
                 let tile_type = TileType::new(chr);
+                match tile_type {
+                    TileType::Start => {
+                        start_point = Some(point);
+                    }
+                    _ => {}
+                }
                 let tile = Tile { point, tile_type };
                 row.push(tile);
             }
@@ -79,6 +87,7 @@ impl Map {
         Self {
             width,
             height,
+            start: start_point.expect("start point"),
             tiles,
         }
     }
