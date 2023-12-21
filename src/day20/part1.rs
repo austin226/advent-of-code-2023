@@ -211,12 +211,12 @@ impl System {
 }
 
 pub fn run() {
-    let input = get_input("src/day20/input2.txt");
+    let input = get_input("src/day20/input1.txt");
     let mut system = System::parse(&input).expect("Failed to parse");
 
     let mut high_pulses = 0;
     let mut low_pulses = 0;
-    for i in 1..=4 {
+    for i in 1..=1000 {
         println!("Button press {i}");
         system.press_button();
         high_pulses += system.high_pulses;
@@ -225,4 +225,5 @@ pub fn run() {
         println!("---");
     }
     println!("Total: {} high, {} low", high_pulses, low_pulses);
+    println!("Answer: {}", high_pulses * low_pulses);
 }
