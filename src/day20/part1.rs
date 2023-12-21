@@ -7,6 +7,7 @@ use regex::Regex;
 use crate::common::get_input;
 
 const BROADCASTER_NAME: &str = "broadcaster";
+const BUTTON_NAME: &str = "button";
 
 #[derive(Debug, Copy, Clone)]
 enum Pulse {
@@ -56,12 +57,6 @@ impl ProcessPulse for FlipFlop {
 struct Conjunction {
     /// Map of each input to their last pulse.
     inputs: HashMap<String, Pulse>,
-}
-
-impl Conjunction {
-    fn connect_input(&mut self, input: String) {
-        self.inputs.insert(input, Pulse::Low);
-    }
 }
 
 impl ProcessPulse for Conjunction {
@@ -176,13 +171,17 @@ impl System {
         self.low_pulses = 0;
         self.high_pulses = 0;
 
-        // Holds pulses and the modules to which they will be applied.
-        let mut q = VecDeque::<(Pulse, String)>::new();
-        q.push_back((Pulse::Low, BROADCASTER_NAME.to_string()));
+        // pulse, origin, destination
+        let mut q = VecDeque::<(Pulse, String, String)>::new();
+        q.push_back((
+            Pulse::Low,
+            BUTTON_NAME.to_string(),
+            BROADCASTER_NAME.to_string(),
+        ));
 
         while !q.is_empty() {
-            let (in_pulse, module_name) = q.pop_front().expect("queue should not be empty");
-            match in_pulse {
+            let (pulse, origin_name, dest_name) = q.pop_front().expect("queue should not be empty");
+            match pulse {
                 Pulse::Low => {
                     self.low_pulses += 1;
                 }
@@ -190,23 +189,20 @@ impl System {
                     self.high_pulses += 1;
                 }
             }
-            if let Some(module) = self.modules.get_mut(&module_name) {
-                if let Some(out_pulse) = module
-                    .pulse_processor
-                    .process(in_pulse, module_name.clone())
-                {
+
+            // Log this pulse
+            let pulse_name = match pulse {
+                Pulse::Low => "low",
+                Pulse::High => "high",
+            };
+            println!("{} -{pulse_name}-> {}", origin_name, dest_name);
+
+            if let Some(dest) = self.modules.get_mut(&dest_name) {
+                // Queue next pulses
+                if let Some(out_pulse) = dest.pulse_processor.process(pulse, origin_name.clone()) {
                     // Apply out_pulse to all destinations
-                    for dest_module_name in module.destinations.iter() {
-                        let pulse_name = match out_pulse {
-                            Pulse::Low => "low",
-                            Pulse::High => "high",
-                        };
-                        println!(
-                            "{} -{pulse_name}-> {}",
-                            module_name.clone(),
-                            dest_module_name.clone()
-                        );
-                        q.push_back((out_pulse, dest_module_name.clone()));
+                    for next_dest_name in dest.destinations.iter() {
+                        q.push_back((out_pulse, dest_name.clone(), next_dest_name.clone()));
                     }
                 }
             }
