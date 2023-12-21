@@ -16,7 +16,7 @@ enum Pulse {
 
 trait ProcessPulse: std::fmt::Debug {
     /// Receive a pulse and maybe emit a pulse.
-    fn process(&mut self, pulse: Pulse) -> Option<Pulse>;
+    fn process(&mut self, pulse: Pulse, origin: String) -> Option<Pulse>;
 }
 
 #[derive(Debug, Default)]
@@ -25,7 +25,7 @@ struct FlipFlop {
 }
 
 impl ProcessPulse for FlipFlop {
-    fn process(&mut self, pulse: Pulse) -> Option<Pulse> {
+    fn process(&mut self, pulse: Pulse, _origin: String) -> Option<Pulse> {
         match pulse {
             Pulse::High => None,
             Pulse::Low => {
@@ -43,21 +43,25 @@ impl ProcessPulse for FlipFlop {
 
 #[derive(Debug, Default)]
 struct Conjunction {
-    ever_received_low: bool,
+    /// Map of each input to their last pulse.
+    inputs: HashMap<String, Pulse>,
 }
 
 impl ProcessPulse for Conjunction {
-    fn process(&mut self, pulse: Pulse) -> Option<Pulse> {
-        if self.ever_received_low {
-            Some(Pulse::High)
-        } else {
-            match pulse {
-                Pulse::High => Some(Pulse::Low),
-                Pulse::Low => {
-                    self.ever_received_low = true;
-                    Some(Pulse::High)
-                }
+    fn process(&mut self, pulse: Pulse, origin: String) -> Option<Pulse> {
+        match pulse {
+            Pulse::Low | Pulse::High => {
+                self.inputs.insert(origin, pulse);
             }
+        }
+        if self.inputs.values().all(|p| match p {
+            Pulse::Low => false,
+            Pulse::High => true,
+        }) {
+            // All inputs are High
+            Some(Pulse::Low)
+        } else {
+            Some(Pulse::High)
         }
     }
 }
@@ -66,33 +70,33 @@ impl ProcessPulse for Conjunction {
 struct Broadcaster;
 
 impl ProcessPulse for Broadcaster {
-    fn process(&mut self, pulse: Pulse) -> Option<Pulse> {
+    fn process(&mut self, pulse: Pulse, _origin: String) -> Option<Pulse> {
         Some(pulse)
     }
 }
 
 #[derive(Debug)]
-struct Module<'a> {
+struct Module {
     pulse_processor: Box<dyn ProcessPulse>,
-    destinations: Vec<&'a str>,
+    destinations: Vec<String>,
 }
 
 #[derive(Debug)]
-struct System<'a> {
-    modules: HashMap<&'a str, Module<'a>>,
+struct System {
+    modules: HashMap<String, Module>,
     low_pulses: i32,
     high_pulses: i32,
 }
 
-impl<'a> System<'a> {
-    fn parse(input: &'a Vec<String>) -> Option<Self> {
+impl System {
+    fn parse(input: &Vec<String>) -> Option<Self> {
         static MODULE_REGEX: Lazy<Regex> =
             Lazy::new(|| Regex::new(r"([%&]?)(\w+) -> (.*)").unwrap());
         let mut modules = HashMap::new();
         for line in input {
             let caps = MODULE_REGEX.captures(line)?;
-            let module_name = caps.get(2)?.as_str();
-            let pulse_processor: Box<dyn ProcessPulse> = if module_name == BROADCASTER_NAME {
+            let name = caps.get(2)?.as_str();
+            let pulse_processor: Box<dyn ProcessPulse> = if name == BROADCASTER_NAME {
                 Box::new(Broadcaster)
             } else {
                 let prefix = caps.get(1)?.as_str();
@@ -103,10 +107,15 @@ impl<'a> System<'a> {
                 }
             };
 
-            let destinations = caps.get(3)?.as_str().split(", ").collect_vec();
+            let destinations = caps
+                .get(3)?
+                .as_str()
+                .split(", ")
+                .map(|s| s.to_string())
+                .collect_vec();
 
             modules.insert(
-                module_name,
+                name.to_string(),
                 Module {
                     pulse_processor,
                     destinations,
@@ -126,8 +135,8 @@ impl<'a> System<'a> {
         self.high_pulses = 0;
 
         // Holds pulses and the modules to which they will be applied.
-        let mut q = VecDeque::<(Pulse, &str)>::new();
-        q.push_back((Pulse::Low, BROADCASTER_NAME));
+        let mut q = VecDeque::<(Pulse, String)>::new();
+        q.push_back((Pulse::Low, BROADCASTER_NAME.to_string()));
 
         while !q.is_empty() {
             let (in_pulse, module_name) = q.pop_front().expect("queue should not be empty");
@@ -140,15 +149,22 @@ impl<'a> System<'a> {
                 }
             }
             if let Some(module) = self.modules.get_mut(&module_name) {
-                if let Some(out_pulse) = module.pulse_processor.process(in_pulse) {
+                if let Some(out_pulse) = module
+                    .pulse_processor
+                    .process(in_pulse, module_name.clone())
+                {
                     // Apply out_pulse to all destinations
                     for dest_module_name in module.destinations.iter() {
                         let pulse_name = match out_pulse {
                             Pulse::Low => "low",
                             Pulse::High => "high",
                         };
-                        println!("{module_name} -{pulse_name}-> {dest_module_name}");
-                        q.push_back((out_pulse, dest_module_name));
+                        println!(
+                            "{} -{pulse_name}-> {}",
+                            module_name.clone(),
+                            dest_module_name.clone()
+                        );
+                        q.push_back((out_pulse, dest_module_name.clone()));
                     }
                 }
             }
