@@ -8,6 +8,7 @@ use crate::common::get_input;
 
 const BROADCASTER_NAME: &str = "broadcaster";
 const BUTTON_NAME: &str = "button";
+const RX_NAME: &str = "rx";
 
 #[derive(Debug, Copy, Clone)]
 enum Pulse {
@@ -106,8 +107,7 @@ struct Module {
 #[derive(Debug)]
 struct System {
     modules: HashMap<String, Module>,
-    low_pulses: i32,
-    high_pulses: i32,
+    rx_active: bool,
 }
 
 impl System {
@@ -162,15 +162,11 @@ impl System {
 
         Some(Self {
             modules,
-            low_pulses: 0,
-            high_pulses: 0,
+            rx_active: false,
         })
     }
 
     fn press_button(&mut self) {
-        self.low_pulses = 0;
-        self.high_pulses = 0;
-
         // pulse, origin, destination
         let mut q = VecDeque::<(Pulse, String, String)>::new();
         q.push_back((
@@ -183,19 +179,23 @@ impl System {
             let (pulse, origin_name, dest_name) = q.pop_front().expect("queue should not be empty");
             match pulse {
                 Pulse::Low => {
-                    self.low_pulses += 1;
+                    if dest_name == RX_NAME {
+                        self.rx_active = true;
+                    }
                 }
-                Pulse::High => {
-                    self.high_pulses += 1;
-                }
+                _ => {}
             }
 
             // Log this pulse
-            let pulse_name = match pulse {
-                Pulse::Low => "low",
-                Pulse::High => "high",
-            };
-            println!("{} -{pulse_name}-> {}", origin_name, dest_name);
+            if dest_name == "cs" {
+                let pulse_name = match pulse {
+                    Pulse::Low => "low",
+                    Pulse::High => "high",
+                };
+                if pulse_name == "high" {
+                    println!("{} -{pulse_name}-> {}", origin_name, dest_name);
+                }
+            }
 
             if let Some(dest) = self.modules.get_mut(&dest_name) {
                 // Queue next pulses
@@ -214,16 +214,10 @@ pub fn run() {
     let input = get_input("src/day20/input1.txt");
     let mut system = System::parse(&input).expect("Failed to parse");
 
-    let mut high_pulses = 0;
-    let mut low_pulses = 0;
-    for i in 1..=1000 {
-        println!("Button press {i}");
+    let mut presses = 0;
+    while !system.rx_active {
+        presses += 1;
         system.press_button();
-        high_pulses += system.high_pulses;
-        low_pulses += system.low_pulses;
-        println!("{} high, {} low", system.high_pulses, system.low_pulses);
-        println!("---");
     }
-    println!("Total: {} high, {} low", high_pulses, low_pulses);
-    println!("Answer: {}", high_pulses * low_pulses);
+    println!("Rx active after {presses} presses.")
 }
