@@ -1,4 +1,4 @@
-// https://adventofcode.com/2023/day/X
+// https://adventofcode.com/2023/day/21
 
 mod part1;
 mod part2;
