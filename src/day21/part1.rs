@@ -170,13 +170,13 @@ impl Map {
 }
 
 pub fn run() {
-    let input = get_input("src/day21/input0.txt");
+    let input = get_input("src/day21/input1.txt");
     let map = Map::new(input);
 
     let mut points = HashSet::new();
     points.insert(map.start);
 
-    const STEPS: i32 = 6;
+    const STEPS: i32 = 64;
     for i in 0..STEPS {
         points = map.step(&points);
     }
