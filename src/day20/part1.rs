@@ -17,10 +17,17 @@ enum Pulse {
 trait ProcessPulse: std::fmt::Debug {
     /// Receive a pulse and maybe emit a pulse.
     fn process(&mut self, pulse: Pulse, origin: String) -> Option<Pulse>;
+
+    fn inputs(&mut self) -> &mut HashMap<String, Pulse>;
+
+    fn connect(&mut self, input_name: String) {
+        self.inputs().insert(input_name, Pulse::Low);
+    }
 }
 
 #[derive(Debug, Default)]
 struct FlipFlop {
+    inputs: HashMap<String, Pulse>,
     is_on: bool,
 }
 
@@ -39,12 +46,22 @@ impl ProcessPulse for FlipFlop {
             }
         }
     }
+
+    fn inputs(&mut self) -> &mut HashMap<String, Pulse> {
+        &mut self.inputs
+    }
 }
 
 #[derive(Debug, Default)]
 struct Conjunction {
     /// Map of each input to their last pulse.
     inputs: HashMap<String, Pulse>,
+}
+
+impl Conjunction {
+    fn connect_input(&mut self, input: String) {
+        self.inputs.insert(input, Pulse::Low);
+    }
 }
 
 impl ProcessPulse for Conjunction {
@@ -64,14 +81,24 @@ impl ProcessPulse for Conjunction {
             Some(Pulse::High)
         }
     }
+
+    fn inputs(&mut self) -> &mut HashMap<String, Pulse> {
+        &mut self.inputs
+    }
 }
 
-#[derive(Debug)]
-struct Broadcaster;
+#[derive(Debug, Default)]
+struct Broadcaster {
+    inputs: HashMap<String, Pulse>,
+}
 
 impl ProcessPulse for Broadcaster {
     fn process(&mut self, pulse: Pulse, _origin: String) -> Option<Pulse> {
         Some(pulse)
+    }
+
+    fn inputs(&mut self) -> &mut HashMap<String, Pulse> {
+        &mut self.inputs
     }
 }
 
@@ -97,7 +124,7 @@ impl System {
             let caps = MODULE_REGEX.captures(line)?;
             let name = caps.get(2)?.as_str();
             let pulse_processor: Box<dyn ProcessPulse> = if name == BROADCASTER_NAME {
-                Box::new(Broadcaster)
+                Box::<Broadcaster>::default()
             } else {
                 let prefix = caps.get(1)?.as_str();
                 match prefix {
@@ -114,13 +141,28 @@ impl System {
                 .map(|s| s.to_string())
                 .collect_vec();
 
+            let module_name = name.to_string();
             modules.insert(
-                name.to_string(),
+                module_name,
                 Module {
                     pulse_processor,
                     destinations,
                 },
             );
+        }
+
+        // Connect inputs to modules
+        let mut connections = Vec::new();
+        for (module_name, module) in modules.iter() {
+            for destination_name in module.destinations.iter() {
+                connections.push((module_name.clone(), destination_name.clone()));
+            }
+        }
+        for (origin_name, dest_name) in connections {
+            if let Some(dest_module) = modules.get_mut(&dest_name) {
+                let dest_processor = &mut dest_module.pulse_processor;
+                dest_processor.connect(origin_name.clone());
+            }
         }
 
         Some(Self {
