@@ -1,8 +1,10 @@
+use std::collections::HashSet;
 use std::hash::Hash;
 
 use itertools::Itertools;
 
 use crate::common::get_input;
+use crate::day21::part1::TileType::Start;
 
 #[derive(Debug)]
 enum Direction {
@@ -12,7 +14,7 @@ enum Direction {
     W,
 }
 
-#[derive(Hash, Copy, Clone)]
+#[derive(Hash, Copy, Clone, PartialEq, Eq)]
 struct Point {
     row: usize,
     col: usize,
@@ -91,9 +93,92 @@ impl Map {
             tiles,
         }
     }
+
+    fn next_point(&self, start: &Point, direction: &Direction) -> Option<Point> {
+        use Direction::*;
+        match direction {
+            N => {
+                if start.row == 0 {
+                    None
+                } else {
+                    Some(Point {
+                        row: start.row - 1,
+                        col: start.col,
+                    })
+                }
+            }
+            E => {
+                if start.col == self.width - 1 {
+                    None
+                } else {
+                    Some(Point {
+                        row: start.row,
+                        col: start.col + 1,
+                    })
+                }
+            }
+            S => {
+                if start.row == self.height - 1 {
+                    None
+                } else {
+                    Some(Point {
+                        row: start.row + 1,
+                        col: start.col,
+                    })
+                }
+            }
+            W => {
+                if start.col == 0 {
+                    None
+                } else {
+                    Some(Point {
+                        row: start.row,
+                        col: start.col - 1,
+                    })
+                }
+            }
+        }
+    }
+
+    fn tile_at(&self, point: &Point) -> Option<&Tile> {
+        self.tiles.get(point.row as usize)?.get(point.col as usize)
+    }
+
+    fn next_tile(&self, start: &Point, direction: &Direction) -> Option<&Tile> {
+        let next_point = self.next_point(start, direction)?;
+        self.tile_at(&next_point)
+    }
+
+    fn step(&self, start_points: &HashSet<Point>) -> HashSet<Point> {
+        use Direction::*;
+
+        let mut res = HashSet::new();
+        for point in start_points {
+            for direction in [N, E, S, W] {
+                if let Some(next_tile) = self.next_tile(point, &direction) {
+                    match next_tile.tile_type {
+                        TileType::Start | TileType::GardenPlot => {
+                            res.insert(next_tile.point);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        res
+    }
 }
 
 pub fn run() {
     let input = get_input("src/day21/input0.txt");
     let map = Map::new(input);
+
+    let mut points = HashSet::new();
+    points.insert(map.start);
+
+    const STEPS: i32 = 6;
+    for i in 0..STEPS {
+        points = map.step(&points);
+    }
+    println!("{}", points.len());
 }
