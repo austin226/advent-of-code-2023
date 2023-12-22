@@ -4,7 +4,6 @@ use std::hash::Hash;
 use itertools::Itertools;
 
 use crate::common::get_input;
-use crate::day21::part1::TileType::Start;
 
 #[derive(Debug)]
 enum Direction {
