@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
 use once_cell::sync::Lazy;
@@ -19,19 +19,21 @@ impl Point {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Brick {
+    id: usize,
     ends: (Point, Point),
 }
 
 impl Brick {
-    fn parse(line: &str) -> Self {
+    fn new(line: &str, id: usize) -> Self {
         static MODULE_REGEX: Lazy<Regex> =
             Lazy::new(|| Regex::new(r"(\d+),(\d+),(\d+)~(\d+),(\d+),(\d+)").unwrap());
         let caps = MODULE_REGEX.captures(line).unwrap();
         let nums =
             [1, 2, 3, 4, 5, 6].map(|i| caps.get(i).unwrap().as_str().parse::<i32>().unwrap());
         Self {
+            id,
             ends: (
                 Point::new(nums[0], nums[1], nums[2]),
                 Point::new(nums[3], nums[4], nums[5]),
@@ -57,16 +59,17 @@ impl Brick {
 }
 
 #[derive(Debug)]
-struct Tower<'a> {
+struct Tower {
     max_x: i32,
     max_y: i32,
     max_z: i32,
-    cells: HashMap<Point, &'a Brick>,
-    bricks: &'a Vec<Brick>,
+    cells: HashMap<Point, usize>,
+    collapsed_bricks: HashSet<usize>,
+    bricks: Vec<Brick>,
 }
 
-impl<'a> Tower<'a> {
-    fn new(bricks: &'a Vec<Brick>) -> Self {
+impl Tower {
+    fn new(bricks: Vec<Brick>) -> Self {
         let mut max_x = 0;
         let mut max_y = 0;
         let mut max_z = 0;
@@ -81,16 +84,56 @@ impl<'a> Tower<'a> {
             max_z = i32::max(max_z, brick.ends.1.z);
 
             for point in brick.points() {
-                cells.insert(point, brick);
+                cells.insert(point, brick.id);
             }
         }
+
+        let collapsed_bricks = HashSet::new();
 
         Self {
             max_x,
             max_y,
             max_z,
             cells,
+            collapsed_bricks,
             bricks,
+        }
+    }
+
+    fn collapse(&mut self) {
+        let mut points_with_bricks = Vec::new();
+        for z in 2..=self.max_z {
+            for x in 0..=self.max_x {
+                for y in 0..=self.max_y {
+                    let point = Point { x, y, z };
+                    if let Some(brick) = self.cells.get(&point) {
+                        points_with_bricks.push(point);
+                    }
+                }
+            }
+        }
+        for point in points_with_bricks {
+            self.collapse_brick(&point);
+        }
+    }
+
+    fn collapse_brick(&mut self, point: &Point) {
+        let brick_id = self.cells[point];
+        if self.collapsed_bricks.contains(&brick_id) {
+            return;
+        }
+        let brick = self.bricks.get_mut(brick_id).unwrap();
+        let old_brick_points = brick.points();
+        for old_point in old_brick_points {
+            self.cells.remove(&old_point);
+        }
+
+        // TODO move
+
+        self.collapsed_bricks.insert(brick_id);
+        let new_brick_points = brick.points();
+        for new_point in new_brick_points {
+            self.cells.insert(new_point, brick_id);
         }
     }
 }
@@ -105,8 +148,9 @@ pub fn run() {
     let input = get_input("src/day22/input0.txt");
     let bricks = input
         .iter()
-        .map(|line| Brick::parse(line.as_str()))
+        .enumerate()
+        .map(|(id, line)| Brick::new(line.as_str(), id))
         .collect_vec();
-    let tower = Tower::new(&bricks);
-    println!("{:?}", tower);
+    let tower = Tower::new(bricks);
+    println!("{:?}", tower.cells.len());
 }
