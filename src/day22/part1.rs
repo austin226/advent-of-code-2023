@@ -170,6 +170,31 @@ impl Tower {
         brick.points = new_brick_points;
     }
 
+    /// Return a map of brick IDs to brick IDs that support it.
+    fn calculate_supporting_bricks(&self) -> HashMap<usize, HashSet<usize>> {
+        let mut res = HashMap::new();
+        for brick in self.bricks.iter() {
+            let mut neighbor_ids = HashSet::new();
+            let min_z = brick
+                .points
+                .iter()
+                .min_by(|p1, p2| p1.z.cmp(&p2.z))
+                .unwrap()
+                .z;
+            let bot_points = brick.points.iter().filter(|p| p.z == min_z);
+            for point in bot_points {
+                let neighbor_point_down = Point::new(point.x, point.y, point.z - 1);
+                if let Some(&neighbor_id) = self.cells.get(&neighbor_point_down) {
+                    if neighbor_id != brick.id {
+                        neighbor_ids.insert(neighbor_id);
+                    }
+                }
+            }
+            res.insert(brick.id, neighbor_ids);
+        }
+        res
+    }
+
     fn highest_occupied_z_below(&self, start_point: &Point) -> i32 {
         for z in (1..start_point.z).rev() {
             //
@@ -183,6 +208,22 @@ impl Tower {
             }
         }
         0
+    }
+
+    fn count_removable_bricks(&self) -> i32 {
+        let supporting_bricks = self.calculate_supporting_bricks();
+        println!("Supporting bricks: {:?}", supporting_bricks);
+
+        let mut removable_bricks: HashSet<usize> =
+            HashSet::from_iter(self.bricks.iter().map(|b| b.id));
+        for (k, v) in supporting_bricks {
+            if v.len() == 1 {
+                let essential_brick_id = v.iter().collect_vec()[0];
+                removable_bricks.remove(essential_brick_id);
+            }
+        }
+
+        removable_bricks.len() as i32
     }
 }
 
@@ -201,5 +242,8 @@ pub fn run() {
         .collect_vec();
     let mut tower = Tower::new(bricks);
     tower.collapse();
-    println!("{:?}", tower.cells.len());
+    // println!("{:?}", tower.cells.len());
+
+    let ans = tower.count_removable_bricks();
+    println!("{}", ans);
 }
