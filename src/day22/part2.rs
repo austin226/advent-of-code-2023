@@ -242,11 +242,13 @@ impl Tower {
         println!("Supporting bricks: {:?}", supporting_bricks);
 
         let mut res = 0;
+        let mut mem = HashMap::new();
         for brick in self.bricks.iter() {
             let n = self.simulate_chain_reaction(
                 brick.id,
                 supported_bricks.clone(),
                 supporting_bricks.clone(),
+                &mut mem,
             );
             println!("{n} bricks fall if {} is removed", brick.id);
             res += n;
@@ -260,8 +262,12 @@ impl Tower {
         brick_id: usize,
         supported_bricks: HashMap<usize, HashSet<usize>>,
         supporting_bricks: HashMap<usize, HashSet<usize>>,
+        mem: &mut HashMap<usize, i32>,
     ) -> i32 {
-        7
+        for up_id in supported_bricks[&brick_id].iter() {
+            // TODO remove
+        }
+        todo!()
     }
 }
 
