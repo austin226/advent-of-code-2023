@@ -22,7 +22,7 @@ impl Point {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Brick {
     id: usize,
-    ends: (Point, Point),
+    points: Vec<Point>,
 }
 
 impl Brick {
@@ -32,19 +32,20 @@ impl Brick {
         let caps = MODULE_REGEX.captures(line).unwrap();
         let nums =
             [1, 2, 3, 4, 5, 6].map(|i| caps.get(i).unwrap().as_str().parse::<i32>().unwrap());
+        let (end1, end2) = (
+            Point::new(nums[0], nums[1], nums[2]),
+            Point::new(nums[3], nums[4], nums[5]),
+        );
         Self {
             id,
-            ends: (
-                Point::new(nums[0], nums[1], nums[2]),
-                Point::new(nums[3], nums[4], nums[5]),
-            ),
+            points: Self::points(end1, end2),
         }
     }
 
-    fn points(&self) -> Vec<Point> {
-        let (xa, xb) = min_max(self.ends.0.x, self.ends.1.x);
-        let (ya, yb) = min_max(self.ends.0.y, self.ends.1.y);
-        let (za, zb) = min_max(self.ends.0.z, self.ends.1.z);
+    fn points(end1: Point, end2: Point) -> Vec<Point> {
+        let (xa, xb) = min_max(end1.x, end2.x);
+        let (ya, yb) = min_max(end1.y, end2.y);
+        let (za, zb) = min_max(end1.z, end2.z);
 
         let mut p = Vec::new();
         for x in xa..=xb {
@@ -54,6 +55,9 @@ impl Brick {
                 }
             }
         }
+
+        // Sort points by z value
+        p.sort_by(|p1, p2| p1.z.cmp(&p2.z));
         p
     }
 }
@@ -76,15 +80,12 @@ impl Tower {
         let mut cells = HashMap::new();
 
         for brick in bricks.iter() {
-            max_x = i32::max(max_x, brick.ends.0.x);
-            max_x = i32::max(max_x, brick.ends.1.x);
-            max_y = i32::max(max_y, brick.ends.0.y);
-            max_y = i32::max(max_y, brick.ends.1.y);
-            max_z = i32::max(max_z, brick.ends.0.z);
-            max_z = i32::max(max_z, brick.ends.1.z);
+            for point in brick.points.iter() {
+                max_x = i32::max(max_x, point.x);
+                max_y = i32::max(max_y, point.y);
+                max_z = i32::max(max_z, point.z);
 
-            for point in brick.points() {
-                cells.insert(point, brick.id);
+                cells.insert(*point, brick.id);
             }
         }
 
@@ -122,10 +123,24 @@ impl Tower {
         if self.collapsed_bricks.contains(&brick_id) {
             return;
         }
-        let brick = self.bricks.get_mut(brick_id).unwrap();
-        let old_brick_points = brick.points();
+        let brick = self.bricks.get(brick_id).unwrap();
+        let old_brick_points = brick.points.clone();
 
-        // TODO move
+        // Find distance to fall
+        // First point is guaranteed lowest z
+        let lowest_brick_point = old_brick_points[0];
+        let highest_z_below = self.highest_occupied_z_below(&lowest_brick_point);
+        let fall_distance = lowest_brick_point.z - highest_z_below - 1;
+
+        // Move points down by fall_distance
+        let new_brick_points = old_brick_points
+            .iter()
+            .map(|old_point| Point {
+                x: old_point.x,
+                y: old_point.y,
+                z: old_point.z - fall_distance,
+            })
+            .collect_vec();
 
         // Mark brick as already collapsed
         self.collapsed_bricks.insert(brick_id);
@@ -134,10 +149,13 @@ impl Tower {
         for old_point in old_brick_points {
             self.cells.remove(&old_point);
         }
-        let new_brick_points = brick.points();
-        for new_point in new_brick_points {
-            self.cells.insert(new_point, brick_id);
+        for new_point in new_brick_points.iter() {
+            self.cells.insert(*new_point, brick_id);
         }
+
+        // Update brick points
+        let brick = self.bricks.get_mut(brick_id).unwrap();
+        brick.points = new_brick_points;
     }
 
     fn highest_occupied_z_below(&self, start_point: &Point) -> i32 {
