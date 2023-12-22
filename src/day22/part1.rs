@@ -124,17 +124,35 @@ impl Tower {
         }
         let brick = self.bricks.get_mut(brick_id).unwrap();
         let old_brick_points = brick.points();
-        for old_point in old_brick_points {
-            self.cells.remove(&old_point);
-        }
 
         // TODO move
 
+        // Mark brick as already collapsed
         self.collapsed_bricks.insert(brick_id);
+
+        // Update cells
+        for old_point in old_brick_points {
+            self.cells.remove(&old_point);
+        }
         let new_brick_points = brick.points();
         for new_point in new_brick_points {
             self.cells.insert(new_point, brick_id);
         }
+    }
+
+    fn highest_occupied_z_below(&self, start_point: &Point) -> i32 {
+        for z in (1..=start_point.z).rev() {
+            //
+            let point = Point {
+                x: start_point.x,
+                y: start_point.y,
+                z,
+            };
+            if self.cells.contains_key(&point) {
+                return z;
+            }
+        }
+        0
     }
 }
 
