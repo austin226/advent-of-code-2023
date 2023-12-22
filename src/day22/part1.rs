@@ -80,12 +80,14 @@ impl Tower {
         let mut cells = HashMap::new();
 
         for brick in bricks.iter() {
+            println!("Place brick {} at {:?}", brick.id, brick.points);
             for point in brick.points.iter() {
                 max_x = i32::max(max_x, point.x);
                 max_y = i32::max(max_y, point.y);
                 max_z = i32::max(max_z, point.z);
 
                 cells.insert(*point, brick.id);
+                // println!("Brick {} is at {:?}", brick.id, point);
             }
         }
 
@@ -108,6 +110,7 @@ impl Tower {
                 for y in 0..=self.max_y {
                     let point = Point { x, y, z };
                     if let Some(brick) = self.cells.get(&point) {
+                        // println!("Found brick {} at {:?}", brick, point);
                         points_with_bricks.push(point);
                     }
                 }
@@ -119,7 +122,10 @@ impl Tower {
     }
 
     fn collapse_brick(&mut self, point: &Point) {
-        let brick_id = self.cells[point];
+        let brick_id = match self.cells.get(point) {
+            Some(b) => *b,
+            None => return,
+        };
         if self.collapsed_bricks.contains(&brick_id) {
             return;
         }
@@ -128,9 +134,14 @@ impl Tower {
 
         // Find distance to fall
         // First point is guaranteed lowest z
-        let lowest_brick_point = old_brick_points[0];
-        let highest_z_below = self.highest_occupied_z_below(&lowest_brick_point);
-        let fall_distance = lowest_brick_point.z - highest_z_below - 1;
+        let min_z = old_brick_points[0].z;
+        let highest_z_below = old_brick_points
+            .iter()
+            .filter(|p| p.z == min_z)
+            .map(|p| self.highest_occupied_z_below(p))
+            .max()
+            .unwrap();
+        let fall_distance = min_z - highest_z_below - 1;
 
         // Move points down by fall_distance
         let new_brick_points = old_brick_points
@@ -155,11 +166,12 @@ impl Tower {
 
         // Update brick points
         let brick = self.bricks.get_mut(brick_id).unwrap();
+        println!("Moved brick {} to {:?}", brick_id, new_brick_points);
         brick.points = new_brick_points;
     }
 
     fn highest_occupied_z_below(&self, start_point: &Point) -> i32 {
-        for z in (1..=start_point.z).rev() {
+        for z in (1..start_point.z).rev() {
             //
             let point = Point {
                 x: start_point.x,
@@ -187,6 +199,7 @@ pub fn run() {
         .enumerate()
         .map(|(id, line)| Brick::new(line.as_str(), id))
         .collect_vec();
-    let tower = Tower::new(bricks);
+    let mut tower = Tower::new(bricks);
+    tower.collapse();
     println!("{:?}", tower.cells.len());
 }
