@@ -171,6 +171,31 @@ impl Tower {
     }
 
     /// Return a map of brick IDs to brick IDs that support it.
+    fn calculate_supported_bricks(&self) -> HashMap<usize, HashSet<usize>> {
+        let mut res = HashMap::new();
+        for brick in self.bricks.iter() {
+            let mut neighbor_ids = HashSet::new();
+            let max_z = brick
+                .points
+                .iter()
+                .max_by(|p1, p2| p1.z.cmp(&p2.z))
+                .unwrap()
+                .z;
+            let top_points = brick.points.iter().filter(|p| p.z == max_z);
+            for point in top_points {
+                let neighbor_point_down = Point::new(point.x, point.y, point.z + 1);
+                if let Some(&neighbor_id) = self.cells.get(&neighbor_point_down) {
+                    if neighbor_id != brick.id {
+                        neighbor_ids.insert(neighbor_id);
+                    }
+                }
+            }
+            res.insert(brick.id, neighbor_ids);
+        }
+        res
+    }
+
+    /// Return a map of brick IDs to brick IDs that support it.
     fn calculate_supporting_bricks(&self) -> HashMap<usize, HashSet<usize>> {
         let mut res = HashMap::new();
         for brick in self.bricks.iter() {
@@ -210,20 +235,33 @@ impl Tower {
         0
     }
 
-    fn count_removable_bricks(&self) -> i32 {
+    fn count_chain_reactions(&self) -> i32 {
+        let supported_bricks = self.calculate_supported_bricks();
+        println!("Supported bricks: {:?}", supported_bricks);
         let supporting_bricks = self.calculate_supporting_bricks();
-        // println!("Supporting bricks: {:?}", supporting_bricks);
+        println!("Supporting bricks: {:?}", supporting_bricks);
 
-        let mut removable_bricks: HashSet<usize> =
-            HashSet::from_iter(self.bricks.iter().map(|b| b.id));
-        for (k, v) in supporting_bricks {
-            if v.len() == 1 {
-                let essential_brick_id = v.iter().collect_vec()[0];
-                removable_bricks.remove(essential_brick_id);
-            }
+        let mut res = 0;
+        for brick in self.bricks.iter() {
+            let n = self.simulate_chain_reaction(
+                brick.id,
+                supported_bricks.clone(),
+                supporting_bricks.clone(),
+            );
+            println!("{n} bricks fall if {} is removed", brick.id);
+            res += n;
         }
+        res
+    }
 
-        removable_bricks.len() as i32
+    /// Return the number of bricks that would fall if brick_id is removed
+    fn simulate_chain_reaction(
+        &self,
+        brick_id: usize,
+        supported_bricks: HashMap<usize, HashSet<usize>>,
+        supporting_bricks: HashMap<usize, HashSet<usize>>,
+    ) -> i32 {
+        7
     }
 }
 
@@ -234,7 +272,7 @@ fn min_max(a: i32, b: i32) -> (i32, i32) {
 }
 
 pub fn run() {
-    let input = get_input("src/day22/input1.txt");
+    let input = get_input("src/day22/input0.txt");
     let bricks = input
         .iter()
         .enumerate()
@@ -244,6 +282,6 @@ pub fn run() {
     tower.collapse();
     // println!("{:?}", tower.cells.len());
 
-    let ans = tower.count_removable_bricks();
+    let ans = tower.count_chain_reactions();
     println!("{}", ans);
 }
