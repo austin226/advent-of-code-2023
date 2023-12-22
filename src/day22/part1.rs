@@ -80,7 +80,7 @@ impl Tower {
         let mut cells = HashMap::new();
 
         for brick in bricks.iter() {
-            println!("Place brick {} at {:?}", brick.id, brick.points);
+            // println!("Place brick {} at {:?}", brick.id, brick.points);
             for point in brick.points.iter() {
                 max_x = i32::max(max_x, point.x);
                 max_y = i32::max(max_y, point.y);
@@ -166,7 +166,7 @@ impl Tower {
 
         // Update brick points
         let brick = self.bricks.get_mut(brick_id).unwrap();
-        println!("Moved brick {} to {:?}", brick_id, new_brick_points);
+        // println!("Moved brick {} to {:?}", brick_id, new_brick_points);
         brick.points = new_brick_points;
     }
 
@@ -212,7 +212,7 @@ impl Tower {
 
     fn count_removable_bricks(&self) -> i32 {
         let supporting_bricks = self.calculate_supporting_bricks();
-        println!("Supporting bricks: {:?}", supporting_bricks);
+        // println!("Supporting bricks: {:?}", supporting_bricks);
 
         let mut removable_bricks: HashSet<usize> =
             HashSet::from_iter(self.bricks.iter().map(|b| b.id));
@@ -234,7 +234,7 @@ fn min_max(a: i32, b: i32) -> (i32, i32) {
 }
 
 pub fn run() {
-    let input = get_input("src/day22/input0.txt");
+    let input = get_input("src/day22/input1.txt");
     let bricks = input
         .iter()
         .enumerate()
