@@ -237,21 +237,21 @@ impl Tower {
 
     fn count_chain_reactions(&self) -> i32 {
         let supported_bricks = self.calculate_supported_bricks();
-        println!("Supported bricks: {:?}", supported_bricks);
+        // println!("Supported bricks: {:?}", supported_bricks);
         let base_bricks = self.calculate_base_bricks();
-        println!("Supporting bricks: {:?}", base_bricks);
+        // println!("Supporting bricks: {:?}", base_bricks);
 
         let mut res = 0;
         let removed_bricks = HashSet::new();
         for brick in self.bricks.iter() {
-            println!("Simulate remove {}", brick.id);
+            // println!("Simulate remove {}", brick.id);
             let n = Self::simulate_remove_brick(
                 brick.id,
                 &supported_bricks,
                 &base_bricks,
                 &removed_bricks,
             );
-            println!("{} bricks fall if {} is removed", n.len(), brick.id);
+            // println!("{} bricks fall if {} is removed", n.len(), brick.id);
             res += n.len();
         }
         res as i32
@@ -264,34 +264,39 @@ impl Tower {
         base_bricks: &HashMap<usize, HashSet<usize>>,
         removed_bricks: &HashSet<usize>,
     ) -> HashSet<usize> {
-        // println!(" --> {}", brick_id);
-        let mut removed_bricks = removed_bricks.clone();
-        removed_bricks.insert(brick_id);
+        let mut output = HashSet::new();
 
-        let mut base_bricks = base_bricks.clone();
+        let mut rem = removed_bricks.clone();
+        rem.insert(brick_id);
 
-        let mut res = HashSet::new();
-        for supported in supported_bricks[&brick_id].iter() {
-            base_bricks.get_mut(supported).unwrap().remove(&brick_id);
-            if base_bricks[supported].is_empty() {
-                println!("    last brick gone for {supported} after {brick_id} removed");
-                res.insert(*supported);
+        // Figure out which bricks this one was supporting
+        let formerly_supported_bricks = &supported_bricks[&brick_id];
+
+        // If any of those are no longer supported, add them to the output
+        for supported in formerly_supported_bricks.iter() {
+            // Find which bricks should be supporting this one
+            let mut remaining_base = base_bricks[supported].clone();
+
+            // Remove everything in rem
+            for removed_brick in rem.iter() {
+                remaining_base.remove(removed_brick);
+            }
+
+            // Now if it's no longer supported, add it to the output
+            if remaining_base.is_empty() {
+                output.insert(*supported);
+
+                // This brick was removed as well, so simulate it
+                rem.insert(*supported);
+                let chain_output =
+                    Self::simulate_remove_brick(*supported, supported_bricks, base_bricks, &rem);
+                for item in chain_output.iter() {
+                    output.insert(*item);
+                }
             }
         }
 
-        for up_id in supported_bricks[&brick_id].iter() {
-            // println!("  ---> {} supports {}", brick_id, up_id);
-            let up_res = Self::simulate_remove_brick(
-                *up_id,
-                supported_bricks,
-                &base_bricks,
-                &removed_bricks,
-            );
-            for id in up_res {
-                res.insert(id);
-            }
-        }
-        res
+        output
     }
 }
 
