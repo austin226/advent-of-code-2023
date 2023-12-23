@@ -307,7 +307,7 @@ fn min_max(a: i32, b: i32) -> (i32, i32) {
 }
 
 pub fn run() {
-    let input = get_input("src/day22/input0.txt");
+    let input = get_input("src/day22/input1.txt");
     let bricks = input
         .iter()
         .enumerate()
