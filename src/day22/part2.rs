@@ -196,7 +196,7 @@ impl Tower {
     }
 
     /// Return a map of brick IDs to brick IDs that support it.
-    fn calculate_supporting_bricks(&self) -> HashMap<usize, HashSet<usize>> {
+    fn calculate_base_bricks(&self) -> HashMap<usize, HashSet<usize>> {
         let mut res = HashMap::new();
         for brick in self.bricks.iter() {
             let mut neighbor_ids = HashSet::new();
@@ -238,16 +238,18 @@ impl Tower {
     fn count_chain_reactions(&self) -> i32 {
         let supported_bricks = self.calculate_supported_bricks();
         println!("Supported bricks: {:?}", supported_bricks);
-        let supporting_bricks = self.calculate_supporting_bricks();
-        println!("Supporting bricks: {:?}", supporting_bricks);
+        let base_bricks = self.calculate_base_bricks();
+        println!("Supporting bricks: {:?}", base_bricks);
 
         let mut res = 0;
+        let removed_bricks = HashSet::new();
         let mut mem = HashMap::new();
         for brick in self.bricks.iter() {
-            let n = self.simulate_chain_reaction(
+            let n = self.simulate_remove_brick(
                 brick.id,
-                supported_bricks.clone(),
-                supporting_bricks.clone(),
+                &supported_bricks,
+                &base_bricks,
+                &removed_bricks,
                 &mut mem,
             );
             println!("{n} bricks fall if {} is removed", brick.id);
@@ -257,17 +259,43 @@ impl Tower {
     }
 
     /// Return the number of bricks that would fall if brick_id is removed
-    fn simulate_chain_reaction(
+    fn simulate_remove_brick(
         &self,
         brick_id: usize,
-        supported_bricks: HashMap<usize, HashSet<usize>>,
-        supporting_bricks: HashMap<usize, HashSet<usize>>,
+        supported_bricks: &HashMap<usize, HashSet<usize>>,
+        base_bricks: &HashMap<usize, HashSet<usize>>,
+        removed_bricks: &HashSet<usize>,
         mem: &mut HashMap<usize, i32>,
     ) -> i32 {
-        for up_id in supported_bricks[&brick_id].iter() {
-            // TODO remove
+        if mem.contains_key(&brick_id) {
+            return mem[&brick_id];
         }
-        todo!()
+
+        let mut removed_bricks = removed_bricks.clone();
+        removed_bricks.insert(brick_id);
+
+        let mut base_bricks = base_bricks.clone();
+
+        let mut res = 0;
+        for supported in supported_bricks[&brick_id].iter() {
+            base_bricks.get_mut(supported).unwrap().remove(&brick_id);
+            if base_bricks[supported].is_empty() {
+                res += 1;
+            }
+        }
+
+        for up_id in supported_bricks[&brick_id].iter() {
+            let up_res = self.simulate_remove_brick(
+                *up_id,
+                supported_bricks,
+                &base_bricks,
+                &removed_bricks,
+                mem,
+            );
+            mem.insert(*up_id, up_res);
+            res += up_res;
+        }
+        res
     }
 }
 
