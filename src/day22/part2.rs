@@ -243,57 +243,53 @@ impl Tower {
 
         let mut res = 0;
         let removed_bricks = HashSet::new();
-        let mut mem = HashMap::new();
         for brick in self.bricks.iter() {
-            let n = self.simulate_remove_brick(
+            println!("Simulate remove {}", brick.id);
+            let n = Self::simulate_remove_brick(
                 brick.id,
                 &supported_bricks,
                 &base_bricks,
                 &removed_bricks,
-                &mut mem,
             );
-            println!("{n} bricks fall if {} is removed", brick.id);
-            res += n;
+            println!("{} bricks fall if {} is removed", n.len(), brick.id);
+            res += n.len();
         }
-        res
+        res as i32
     }
 
     /// Return the number of bricks that would fall if brick_id is removed
     fn simulate_remove_brick(
-        &self,
         brick_id: usize,
         supported_bricks: &HashMap<usize, HashSet<usize>>,
         base_bricks: &HashMap<usize, HashSet<usize>>,
         removed_bricks: &HashSet<usize>,
-        mem: &mut HashMap<usize, i32>,
-    ) -> i32 {
-        if mem.contains_key(&brick_id) {
-            return mem[&brick_id];
-        }
-
+    ) -> HashSet<usize> {
+        // println!(" --> {}", brick_id);
         let mut removed_bricks = removed_bricks.clone();
         removed_bricks.insert(brick_id);
 
         let mut base_bricks = base_bricks.clone();
 
-        let mut res = 0;
+        let mut res = HashSet::new();
         for supported in supported_bricks[&brick_id].iter() {
             base_bricks.get_mut(supported).unwrap().remove(&brick_id);
             if base_bricks[supported].is_empty() {
-                res += 1;
+                println!("    last brick gone for {supported} after {brick_id} removed");
+                res.insert(*supported);
             }
         }
 
         for up_id in supported_bricks[&brick_id].iter() {
-            let up_res = self.simulate_remove_brick(
+            // println!("  ---> {} supports {}", brick_id, up_id);
+            let up_res = Self::simulate_remove_brick(
                 *up_id,
                 supported_bricks,
                 &base_bricks,
                 &removed_bricks,
-                mem,
             );
-            mem.insert(*up_id, up_res);
-            res += up_res;
+            for id in up_res {
+                res.insert(id);
+            }
         }
         res
     }
